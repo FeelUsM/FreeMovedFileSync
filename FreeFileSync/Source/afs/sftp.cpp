@@ -19,6 +19,9 @@
 #include "abstract_impl.h"
     #include <poll.h>
 
+#define MAX_SFTP_OUTGOING_SIZE 30000
+#define MAX_SFTP_READ_SIZE 30000
+
 using namespace zen;
 using namespace fff;
 using AFS = AbstractFileSystem;

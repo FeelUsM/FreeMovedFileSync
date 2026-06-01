@@ -223,7 +223,7 @@ wxLayoutDirection Application::GetLayoutDirection() const { return languageLayou
 int Application::OnRun()
 {
 #if wxUSE_EXCEPTIONS
-#error why is wxWidgets uncaught exception handling enabled!?
+#warning why is wxWidgets uncaught exception handling enabled!?
 #endif
 
     //exception => Windows: let it crash and create mini dump!!! Linux/macOS: std::exception::what() logged to console

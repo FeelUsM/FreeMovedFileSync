@@ -1,12 +1,31 @@
-CXX ?= g++
+# CXX ?= clang-20 # CXX already defined by make
+ifeq ($(origin CXX),default)
+	CXX := clang++-20
+endif
 exeName = FreeFileSync_$(shell arch)
 
-CXXFLAGS += -std=c++23 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" \
-           -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wnon-virtual-dtor -Wno-unused-function -Wshadow -Wno-maybe-uninitialized \
-           -O3 -DNDEBUG -pthread
+# Режим сборки по умолчанию
+BUILD ?= release
 
-LDFLAGS += -s -pthread
+# Базовые флаги (общие для всех конфигураций)
+CXXFLAGS_BASE = -std=c++23 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" \
+	-Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wnon-virtual-dtor \
+	-Wno-unused-function -Wshadow -Wno-maybe-uninitialized -pthread
 
+# Условное назначение флагов и путей
+ifeq ($(BUILD),debug)
+	CXXFLAGS = $(CXXFLAGS_BASE) -g -O0 -DNDEBUG
+	LDFLAGS  = -g
+	OBJ_DIR  = ../Build/Debug/Obj1/Obj
+	BIN_DIR  = ../Build/Debug/Bin
+else
+	CXXFLAGS = $(CXXFLAGS_BASE) -O3 -DNDEBUG
+	LDFLAGS  = -s
+	OBJ_DIR  = ../Build/Release/Obj1/Obj
+	BIN_DIR  = ../Build/Release/Bin
+endif
+
+LDFLAGS += -pthread
 
 CXXFLAGS += `wx-config --cxxflags --debug=no`
 LDFLAGS  += `wx-config --libs std, aui, richtext --debug=no`
@@ -119,20 +138,31 @@ cppFiles+=../../wx+/popup_dlg.cpp
 cppFiles+=../../wx+/popup_dlg_generated.cpp
 cppFiles+=../../xBRZ/src/xbrz.cpp
 
-tmpPath = $(shell dirname "$(shell mktemp -u)")/$(exeName)_Make
+objFiles = $(cppFiles:%=$(OBJ_DIR)/%.o)
+DEPS     = $(cppFiles:%=$(OBJ_DIR)/%.d)
+TARGET   = $(BIN_DIR)/$(exeName)
 
-objFiles = $(cppFiles:%=$(tmpPath)/ffs/src/%.o)
+.PHONY: all clean debug release
 
-all: ../Build/Bin/$(exeName)
+all: $(TARGET)
 
-../Build/Bin/$(exeName): $(objFiles)
-	mkdir -p $(dir $@)
+$(TARGET): $(objFiles)
+	@mkdir -p $(dir $@)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
-$(tmpPath)/ffs/src/%.o : %
-	mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+-include $(DEPS)
+
+$(OBJ_DIR)/%.o : %
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 clean:
-	rm -rf $(tmpPath)
-	rm -f ../Build/Bin/$(exeName)
+	rm -rf ../Build/Debug ../Build/Release
+
+debug:
+	$(MAKE) BUILD=debug
+	cp -r ../Build/Resources ../Build/Debug
+
+release:
+	$(MAKE) BUILD=release
+	cp -r ../Build/Resources ../Build/Release
