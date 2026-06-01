@@ -1,0 +1,6 @@
+FreeFileSync/Build/Debug/*
+FreeFileSync/Build/release/*
+FreeFileSync/Build/Resources/Icons/
+
+.gdb_history
+
