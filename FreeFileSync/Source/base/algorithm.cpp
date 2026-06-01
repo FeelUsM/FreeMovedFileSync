@@ -574,6 +574,7 @@ private:
          3. even exFAT screws up (but less than FAT) and changes IDs after file move. Did they learn nothing from the past?           */
 };
 
+
 //----------------------------------------------------------------------------------------------
 
 class SetSyncDirViaChanges
@@ -837,8 +838,7 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
     std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> lastSyncStates;
 
     //best effort: always set sync directions (even on DB load error and when user cancels during file loading)
-    ZEN_ON_SCOPE_EXIT
-    (
+    [[maybe_unused]] auto main_block = zen::makeGuard<zen::ScopeGuardRunMode::onExit   >([&]{
         //*INDENT-OFF*
         for (const auto& [baseFolder, dirCfg] : directCfgs)
             if (!pairsToSkip.contains(baseFolder))
@@ -879,7 +879,7 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
                 }
             }
         //*INDENT-ON*
-    );
+    });
 
     std::vector<const BaseFolderPair*> baseFoldersForDbLoad;
     for (const auto& [baseFolder, dirCfg] : directCfgs)

@@ -13,6 +13,7 @@
 #include "path_filter.h"
 #include "../afs/abstract.h"
 
+#include <stdio.h>
 
 namespace fff
 {
@@ -110,6 +111,21 @@ enum class FileContentCategory : unsigned char
     different,
     conflict,
 };
+
+inline const char* FileContentCategoryToString(FileContentCategory c)
+{
+    switch (c)
+    {
+        case FileContentCategory::unknown:     return "cat:unknown";
+        case FileContentCategory::equal:       return "cat:equal";
+        case FileContentCategory::leftNewer:   return "cat:leftNewer";
+        case FileContentCategory::rightNewer:  return "cat:rightNewer";
+        case FileContentCategory::invalidTime: return "cat:invalidTime";
+        case FileContentCategory::different:   return "cat:different";
+        case FileContentCategory::conflict:    return "cat:conflict";
+    }
+    return "?";
+}
 
 
 inline
@@ -239,6 +255,8 @@ public:
 
     virtual void flip();
 
+    void print(int depth) const;
+
 protected:
     explicit ContainerObject(BaseFolderPair& baseFolder) : //used during BaseFolderPair constructor
         base_(baseFolder) //take reference only: baseFolder *not yet* fully constructed at this point!
@@ -278,6 +296,19 @@ enum class BaseFolderStatus
     failure,
 };
 
+inline const char* BaseFolderStatusToString(BaseFolderStatus s)
+{
+    switch (s)
+    {
+        case BaseFolderStatus::existing:    return "existing";
+        case BaseFolderStatus::notExisting: return "notExisting";
+        case BaseFolderStatus::failure:     return "failure";
+    }
+    return "?";
+}
+
+#define cPath(path) AFS::getDisplayPath(path).c_str() // -> const wchar_t * // printf("%ls")
+
 class BaseFolderPair : public ContainerObject
 {
 public:
@@ -306,6 +337,22 @@ public:
     const std::vector<unsigned int>& getIgnoredTimeShift() const { return ignoreTimeShiftMinutes_; }
 
     void flip() override;
+
+    inline void print() const
+    {
+        //using AFS = AbstractFileSystem;
+
+        //::fprintf(stderr, "    filter     : %s\n", base.getFilter().isNull() ? "true" : "false");
+        //::fprintf(stderr, "    ignoreTimeShiftMinutes_: ");
+        //for(auto x : ignoreTimeShiftMinutes_)
+        //    ::fprintf(stderr, "%d ",x);
+        //  ::fprintf(stderr, "\n");
+        ::fprintf(stderr, "%18p timeTol:%u sec%12s\n",this, fileTimeTolerance_,CompareVariantToString(cmpVar_));
+        ::fprintf(stderr, "folderPathLeft_ : %60ls  [%s]\n", cPath(folderPathLeft_), BaseFolderStatusToString(folderStatusLeft_));
+        ::fprintf(stderr, "folderPathRight_: %60ls  [%s]\n", cPath(folderPathRight_), BaseFolderStatusToString(folderStatusRight_));
+        ContainerObject::print(0);
+    }
+
 
 private:
     AbstractPath getAbstractPathL() const override { return folderPathLeft_; }
@@ -363,6 +410,7 @@ public:
 
     //sync settings
     void setSyncDir(SyncDirection newDir);
+    const SyncDirection & getSyncDir() const { return syncDir_; }
     void setSyncDirConflict(const Zstringc& description); //set syncDir = SyncDirection::none + fill conflict description
 
     bool isActive() const { return selectedForSync_; }
@@ -384,6 +432,21 @@ public:
 
     template <SelectSide side>
     void setItemName(const Zstring& itemName);
+
+    void print(int depth) const
+    {
+        ::fprintf(stderr,"%*sparent_:%18p %-13s%-22s%s %s\n",depth*4,"",
+            &parent_,
+            SyncDirectionToString(syncDir_),
+            SyncOperationToString(FileSystemObject::getSyncOperation()),
+            selectedForSync_?"" : "not selected",
+            syncDirectionConflict_.c_str()
+        );
+        ::fprintf(stderr,"%*sitemNameLR_%*s%30s%30s\n",depth*4,"",60-11-depth*4,"",
+            itemNameL_.empty() ? "/empty/" : itemNameL_.c_str(),
+            itemNameR_.empty() ? "/empty/" : itemNameR_.c_str()
+        );
+    }
 
 protected:
     FileSystemObject(const Zstring& itemNameL,
@@ -465,6 +528,16 @@ public:
 
     template <SelectSide side> void removeItem();
 
+    void print(int depth) const
+    {
+        ::fprintf(stderr,"%*s%-22s%s\n",depth*4+40,"",
+            SyncOperationToString(getSyncOperation()),
+            categoryConflict_.c_str()
+        );
+        FileSystemObject::print(depth);
+        ContainerObject::print(depth);
+    }
+
 private:
     void notifySyncCfgChanged() override { syncOpBuffered_ = {}; FileSystemObject::notifySyncCfgChanged(); }
 
@@ -529,6 +602,20 @@ public:
 
     template <SelectSide side> void removeItem();
 
+    void print(int depth) const
+    {
+        ::fprintf(stderr,"%*smove:%18p %-16s%-22s%s\n",depth*4,"",getMovePair(),
+            FileContentCategoryToString(contentCategory_),
+            SyncOperationToString(getSyncOperation()),
+            categoryDescr_.c_str()
+        );
+        ::fprintf(stderr,"%*sattributes(time,size,inode):%*s%11li%10lu%9lu%11li%10lu%9lu\n",depth*4,"",60-11-17-depth*4,"",
+            attrL_.modTime, attrL_.fileSize, attrL_.filePrint,
+            attrR_.modTime, attrR_.fileSize, attrR_.filePrint
+        );
+        FileSystemObject::print(depth);
+    }
+
 private:
     Zstring getRelativePathL() const override { return appendPath(parent().getRelativePath<SelectSide::left >(), getItemName<SelectSide::left >()); }
     Zstring getRelativePathR() const override { return appendPath(parent().getRelativePath<SelectSide::right>(), getItemName<SelectSide::right>()); }
@@ -579,6 +666,20 @@ public:
     FileContentCategory getContentCategory() const;
 
     template <SelectSide side> void removeItem();
+
+    void print(int depth) const
+    {
+        ::fprintf(stderr,"%*s                       %-16s%-22s%s\n",depth*4,"",
+            FileContentCategoryToString(contentCategory_),
+            SyncOperationToString(getSyncOperation()),
+            categoryDescr_.c_str()
+        );
+        ::fprintf(stderr,"%*sattributes(time):%*s%30li%10li\n",depth*4,"",60-11-6-depth*4,"",
+            attrL_.modTime,
+            attrR_.modTime
+        );
+        FileSystemObject::print(depth);
+    }
 
 private:
     Zstring getRelativePathL() const override { return appendPath(parent().getRelativePath<SelectSide::left >(), getItemName<SelectSide::left >()); }
@@ -718,6 +819,31 @@ void visitFSObjectRecursively(FileSystemObject& fsObj, //consider item and conta
 
 
 //--------------------- implementation ------------------------------------------
+
+inline void ContainerObject::print(int depth) const
+{
+    //const std::string pad(depth * 2, ' ');
+    ::fprintf(stderr, "%*sbase_:%18p relPathLR_%*s%30s%30s\n", depth*4,"",this, 60-24-11-depth*4, "",
+        relPathL_.empty() ? "/empty/" : relPathL_.c_str(),
+        relPathR_.empty() ? "/empty/" : relPathR_.c_str());
+    ::fprintf(stderr,"%*ssymlinks_:\n",depth*4,"");
+    for (size_t i=0; i<symlinks_.size(); i++) {
+        ::fprintf(stderr,"%*s[%d] %p\n",depth*4,"",i,&(symlinks_[i].ref()));
+        symlinks_[i].ref().print(depth+1);
+    }
+    ::fprintf(stderr,"%*sfiles_:\n",depth*4,"");
+    for (size_t i=0; i<files_.size(); i++) {
+        ::fprintf(stderr,"%*s[%d] %p\n",depth*4,"",i,&(files_[i].ref()));
+        files_[i].ref().print(depth+1);
+    }
+    ::fprintf(stderr,"%*ssubfolders_:\n",depth*4,"");
+    for (size_t i=0; i<subfolders_.size(); i++) {
+        ::fprintf(stderr,"%*s[%d] %p\n",depth*4,"",i,&(subfolders_[i].ref()));
+        subfolders_[i].ref().print(depth+1);
+    }
+}
+
+
 
 //inline virtual... admittedly its use may be limited
 inline void FolderPair ::accept(FSObjectVisitor& visitor) const { visitor.visit(*this); }

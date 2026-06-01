@@ -12,6 +12,7 @@
 #include <chrono>
 #include <zen/zstring.h>
 #include "../afs/abstract.h"
+#include <stdio.h>
 
 
 namespace fff
@@ -25,6 +26,16 @@ enum class CompareVariant
     size
 };
 
+inline const char* CompareVariantToString(CompareVariant v)
+{
+    switch (v)
+    {
+        case CompareVariant::timeSize: return "cv:timeSize";
+        case CompareVariant::content:  return "cv:content";
+        case CompareVariant::size:     return "cv:size";
+    }
+    return "?";
+}
 
 enum class SymLinkHandling
 {
@@ -41,6 +52,16 @@ enum class SyncDirection : unsigned char //save space for use in FileSystemObjec
     right
 };
 
+inline const char* SyncDirectionToString(SyncDirection d)
+{
+    switch (d)
+    {
+        case SyncDirection::none:  return "dir:none";
+        case SyncDirection::left:  return "dir:left";
+        case SyncDirection::right: return "dir:right";
+    }
+    return "?";
+}
 
 enum CompareFileResult
 {
@@ -54,6 +75,25 @@ enum CompareFileResult
     FILE_DIFFERENT_CONTENT, //CompareVariant::content, CompareVariant::size only!
     FILE_CONFLICT
 };
+
+inline const char* CompareFileResultToString(CompareFileResult r)
+{
+    switch (r)
+    {
+        case FILE_EQUAL : return "FILE_EQUAL";
+        case FILE_RENAMED : return "FILE_RENAMED";
+        case FILE_LEFT_ONLY : return "FILE_LEFT_ONLY";
+        case FILE_RIGHT_ONLY : return "FILE_RIGHT_ONLY";
+        case FILE_LEFT_NEWER : return "FILE_LEFT_NEWER";
+        case FILE_RIGHT_NEWER : return "FILE_RIGHT_NEWER";
+        case FILE_TIME_INVALID : return "FILE_TIME_INVALID";
+        case FILE_DIFFERENT_CONTENT : return "FILE_DIFFERENT_CONTENT";
+        case FILE_CONFLICT : return "FILE_CONFLICT";
+    }
+    return "?";
+}
+
+
 //attention make sure these /|\  \|/ three enums match!!!
 enum CompareDirResult
 {
@@ -104,6 +144,29 @@ enum SyncOperation
     SO_EQUAL,      //nothing will be synced: both sides are equal
     SO_UNRESOLVED_CONFLICT
 };
+
+inline const char* SyncOperationToString(SyncOperation op)
+{
+    switch (op)
+    {
+        case SO_CREATE_LEFT:         return "SO_CREATE_LEFT";
+        case SO_CREATE_RIGHT:        return "SO_CREATE_RIGHT";
+        case SO_DELETE_LEFT:         return "SO_DELETE_LEFT";
+        case SO_DELETE_RIGHT:        return "SO_DELETE_RIGHT";
+        case SO_OVERWRITE_LEFT:      return "SO_OVERWRITE_LEFT";
+        case SO_OVERWRITE_RIGHT:     return "SO_OVERWRITE_RIGHT";
+        case SO_MOVE_LEFT_FROM:      return "SO_MOVE_LEFT_FROM";
+        case SO_MOVE_LEFT_TO:        return "SO_MOVE_LEFT_TO";
+        case SO_MOVE_RIGHT_FROM:     return "SO_MOVE_RIGHT_FROM";
+        case SO_MOVE_RIGHT_TO:       return "SO_MOVE_RIGHT_TO";
+        case SO_RENAME_LEFT:         return "SO_RENAME_LEFT";
+        case SO_RENAME_RIGHT:        return "SO_RENAME_RIGHT";
+        case SO_DO_NOTHING:          return "SO_DO_NOTHING";
+        case SO_EQUAL:               return "SO_EQUAL";
+        case SO_UNRESOLVED_CONFLICT: return "SO_UNRESOLVED_CONFLICT";
+    }
+    return "?";
+}
 
 std::wstring getSymbol(SyncOperation op); //method used for exporting .csv file only!
 
@@ -388,6 +451,21 @@ struct WarningDialogs
 
     bool operator==(const WarningDialogs&) const = default;
 };
+inline void printWarningDialogs(const WarningDialogs & wd, const char * mes = "WarningDialogs") {
+    printf("%s: ",mes);
+    if(wd.warnFolderNotExisting) printf("warnFolderNotExisting ");
+    if(wd.warnFoldersDifferInCase) printf("warnFoldersDifferInCase ");
+    if(wd.warnDependentFolderPair) printf("warnDependentFolderPair ");
+    if(wd.warnDependentBaseFolders) printf("warnDependentBaseFolders ");
+    if(wd.warnSignificantDifference) printf("warnSignificantDifference ");
+    if(wd.warnNotEnoughDiskSpace) printf("warnNotEnoughDiskSpace ");
+    if(wd.warnUnresolvedConflicts) printf("warnUnresolvedConflicts ");
+    if(wd.warnRecyclerMissing) printf("warnRecyclerMissing ");
+    if(wd.warnDirectoryLockFailed) printf("warnDirectoryLockFailed ");
+    if(wd.warnVersioningFolderPartOfSync) printf("warnVersioningFolderPartOfSync ");
+    printf("\n");
+}
+
 }
 
 #endif //STRUCTURES_H_8210478915019450901745

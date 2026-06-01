@@ -18,6 +18,8 @@
 #include "../afs/concrete.h"
 #include "../afs/native.h"
 
+#include <stdio.h>
+
 using namespace zen;
 using namespace fff;
 
@@ -1058,8 +1060,28 @@ SharedRef<BaseFolderPair> ComparisonBuffer::performComparison(const ResolvedFold
     //##################################################################################
     return output;
 }
+
+} // namespace
+
+
+
+namespace fff
+{
+
+//-------------------------------------------------------------------
+// print методы, добавляемые в классы через файл
+//-------------------------------------------------------------------
+
+inline void printFolderComparison(const FolderComparison& cmp)
+{
+    for (size_t i = 0; i < cmp.size(); ++i){
+        ::fprintf(stderr, "--- FolderComparison #%zu ---\n", i);
+        cmp[i].ref().print();
+    }
+    ::fflush(stderr);
 }
 
+} // namespace fff
 
 FolderComparison fff::compare(WarningDialogs& warnings,
                               unsigned int fileTimeTolerance,
@@ -1182,8 +1204,14 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         for (auto it = output.begin(); it != output.end(); ++it)
             directCfgs.emplace_back(&it->ref(), fpCfgList[it - output.begin()].directionCfg);
 
+        ::fprintf(stderr,"======= before algorithm =======\n");
+        fff::printFolderComparison(output);
+
         redetermineSyncDirection(directCfgs,
                                  callback); //throw X
+
+        ::fprintf(stderr,"======= after algorithm =======\n");
+        fff::printFolderComparison(output);
 
         return output;
     }
