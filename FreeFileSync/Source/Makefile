@@ -14,7 +14,7 @@ CXXFLAGS_BASE = -std=c++23 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXm
 
 # Условное назначение флагов и путей
 ifeq ($(BUILD),debug)
-	CXXFLAGS = $(CXXFLAGS_BASE) -g -O0 -DNDEBUG
+	CXXFLAGS = $(CXXFLAGS_BASE) -g3 -gcolumn-info -O0 -DNDEBUG
 	LDFLAGS  = -g
 	OBJ_DIR  = ../Build/Debug/Obj1/Obj
 	BIN_DIR  = ../Build/Debug/Bin

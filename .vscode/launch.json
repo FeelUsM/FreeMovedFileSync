@@ -1,0 +1,30 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+        {
+            "name": "FFS Debug (GDB)",
+            "type": "cppdbg",
+            "request": "launch",
+
+            "program": "${workspaceFolder}/FreeFileSync/Build/Debug/Bin/FreeFileSync_x86_64",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "stopAtEntry": false,
+            "externalConsole": false,
+
+			"sourceFileMap": { "/home/ubuntu/FreeMovedFileSync": "${workspaceFolder}" },
+            "setupCommands": [
+//                {"ignoreFailures": false, "text": "set substitute-path /home/ubuntu/FreeMovedFileSync ${workspaceFolder}" },
+                // include file with pretty-printers (also allowing it to print messages to debug console)
+                {"ignoreFailures": false, "text": "-interpreter-exec console \"source ${workspaceFolder}/.vscode/gdb-pretty-printers\"" },
+                // enable pretty-printers in mi-mode (it disabled by default)
+                {"ignoreFailures": false, "text": "-enable-pretty-printing" },
+                // enable dynamically detecting type of object with VTBL
+                {"ignoreFailures": false, "text": "set print object on" },
+
+            ],
+//            "logging": {"engineLogging": true, "trace": true}
+        }
+	]
+}

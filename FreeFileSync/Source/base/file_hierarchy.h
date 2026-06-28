@@ -828,17 +828,17 @@ inline void ContainerObject::print(int depth) const
         relPathR_.empty() ? "/empty/" : relPathR_.c_str());
     ::fprintf(stderr,"%*ssymlinks_:\n",depth*4,"");
     for (size_t i=0; i<symlinks_.size(); i++) {
-        ::fprintf(stderr,"%*s[%d] %p\n",depth*4,"",i,&(symlinks_[i].ref()));
+        ::fprintf(stderr,"%*s[%zu] %p\n",depth*4,"",i,&(symlinks_[i].ref()));
         symlinks_[i].ref().print(depth+1);
     }
     ::fprintf(stderr,"%*sfiles_:\n",depth*4,"");
     for (size_t i=0; i<files_.size(); i++) {
-        ::fprintf(stderr,"%*s[%d] %p\n",depth*4,"",i,&(files_[i].ref()));
+        ::fprintf(stderr,"%*s[%zu] %p\n",depth*4,"",i,&(files_[i].ref()));
         files_[i].ref().print(depth+1);
     }
     ::fprintf(stderr,"%*ssubfolders_:\n",depth*4,"");
     for (size_t i=0; i<subfolders_.size(); i++) {
-        ::fprintf(stderr,"%*s[%d] %p\n",depth*4,"",i,&(subfolders_[i].ref()));
+        ::fprintf(stderr,"%*s[%zu] %p\n",depth*4,"",i,&(subfolders_[i].ref()));
         subfolders_[i].ref().print(depth+1);
     }
 }
