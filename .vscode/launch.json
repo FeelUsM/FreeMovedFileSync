@@ -25,6 +25,23 @@
 
             ],
 //            "logging": {"engineLogging": true, "trace": true}
+        },
+        {
+            "name": "FFS Debug (LLDB)",
+            "type": "lldb",
+            "request": "launch",
+
+            "program": "${workspaceFolder}/FreeFileSync/Build/Debug/Bin/FreeFileSync_x86_64",
+            "cwd": "${workspaceFolder}",
+
+			"sourceMap": { "/home/ubuntu/FreeMovedFileSync": "${workspaceFolder}" },
+            "initCommands": [
+//                "settings set target.process.thread.step-in-avoid-nodebug false",
+//                "settings set target.process.thread.step-out-avoid-nodebug false",
+//                "settings set target.process.thread.step-avoid-regexp \"\"",
+//                "settings set target.prefer-dynamic-value run-target",
+            ],
+            "logging": {"engineLogging": true, "trace": true}
         }
 	]
 }

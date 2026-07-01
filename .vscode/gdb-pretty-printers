@@ -19,3 +19,64 @@ register_libstdcxx_printers(None)
 print("STL pretty printers loaded.")
 
 end
+
+
+python
+
+import gdb
+
+STL_PREFIXES = ("std::", "__gnu_cxx::", "__cxx")
+
+MAX_STEPS = 1000
+
+_counter = 0
+_active = False
+
+def is_stl_frame():
+	try:
+		frame = gdb.selected_frame()
+		name = frame.name() or ""
+		return any(name.startswith(p) for p in STL_PREFIXES) or frame.find_sal().symtab.filename.startswith('/usr/lib/gcc')
+	except gdb.error:
+		return False
+
+def on_stop(event):
+	global _counter, _active
+
+	if not _active:
+		return
+
+	if not is_stl_frame():
+		_counter = 0
+		_active = False
+		return
+
+	_counter += 1
+	if _counter >= MAX_STEPS:
+		_counter = 0
+		_active = False
+		print(f"[smartstep] WARNING: всё ещё в STL после {MAX_STEPS} шагов")
+		gdb.execute("bt")
+		return
+
+	gdb.execute("step")
+
+#gdb.events.stop.connect(on_stop)
+
+
+class S3Command(gdb.Command):
+    def __init__(self):
+        super(S3Command,self).__init__("s3",gdb.COMMAND_RUNNING)
+
+    def invoke(self,filename,from_tty):
+        print("---step1:",gdb.execute("step",to_string=True),":step1---")
+        print("---step2:",gdb.execute("step",to_string=True),":step2---")
+        print("---step3:",gdb.execute("step",to_string=True),":step3---")
+        print("---frame:",gdb.execute("frame",to_string=True),":frame---")
+#S3Command()
+
+end
+
+#define hook-step
+#  python _active = True; _counter = 0
+#end
