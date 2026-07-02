@@ -6,11 +6,22 @@
                 "${workspaceFolder}/**"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/gcc-14",
+//            "compilerPath": "/usr/bin/gcc-14",
+			"compilerPath": "/usr/bin/clang++-20",
             "cStandard": "c17",
-            "cppStandard": "c++17",
+//            "cppStandard": "c++17",
+			"cppStandard": "c++23",
             "intelliSenseMode": "linux-clang-x64"
-        }
+        },
+		{
+			"name": "bear-debug",
+			"compileCommands": "${workspaceFolder}/FreeFileSync/Source/compile_commands.json",
+//			"defines": ["DEBUG"],
+			"compilerPath": "/usr/bin/clang++-20",
+			"cppStandard": "c++23",
+			"intelliSenseMode": "linux-clang-x64"
+//            "sourceFileMap": {"/home/ubuntu/FreeMovedFileSync": "${workspaceFolder}" }
+		}
     ],
     "version": 4
 }

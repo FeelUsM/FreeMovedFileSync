@@ -1,0 +1,6 @@
+CompileFlags:
+  Add:
+    - "-I./FreeFileSync/Source"
+    - "-I./FreeFileSync/Source/Base"
+    - "-I."
+  CompilationDatabase: FreeFileSync/Source
