@@ -13,6 +13,9 @@ using namespace zen;
 using namespace fff;
 
 
+SelectSide fff::moveMode = SelectSide::left;
+
+
 std::wstring fff::getShortDisplayNameForFolderPair(const AbstractPath& itemPathL, const AbstractPath& itemPathR)
 {
     Zstring commonTrail;
@@ -63,6 +66,21 @@ void ContainerObject::removeDoubleEmpty()
 
     for (FolderPair& folder : subfolders())
         folder.removeDoubleEmpty();
+}
+
+
+std::vector<std::reference_wrapper<FilePair>> ContainerObject::filesMv()
+{
+    std::vector<std::reference_wrapper<FilePair>> result;
+    for (FilePair& file : files())
+    {
+        FilePair* mp = file.getMovePair();
+        if (!mp ||
+            !((moveMode == SelectSide::left  && file.isEmpty<SelectSide::left >()) ||
+              (moveMode == SelectSide::right && file.isEmpty<SelectSide::right>())))
+            result.push_back(file);
+    }
+    return result;
 }
 
 

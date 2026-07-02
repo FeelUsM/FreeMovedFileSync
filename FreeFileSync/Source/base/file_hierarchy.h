@@ -8,6 +8,7 @@
 #define FILE_HIERARCHY_H_257235289645296
 
 #include <string>
+#include <functional>
 #include <unordered_map>
 #include "structures.h"
 #include "path_filter.h"
@@ -86,6 +87,7 @@ enum class SelectSide
     right
 };
 
+extern SelectSide moveMode; // controls display mode: left-side or right-side perspective
 
 template <SelectSide side>
 constexpr SelectSide getOtherSide = side == SelectSide::left ? SelectSide::right : SelectSide::left;
@@ -234,6 +236,8 @@ public:
 
     zen::Range<zen::DerefIter<FileList::const_iterator, const FilePair>> files() const { return {files_.begin(), files_.end()}; }
     zen::Range<zen::DerefIter<FileList::      iterator,       FilePair>> files()       { return {files_.begin(), files_.end()}; }
+
+    std::vector<std::reference_wrapper<FilePair>> filesMv(); // filtered by moveMode: skip hidden side of move pairs
 
     zen::Range<zen::DerefIter<SymlinkList::const_iterator, const SymlinkPair>> symlinks() const { return {symlinks_.begin(), symlinks_.end()}; }
     zen::Range<zen::DerefIter<SymlinkList::      iterator,       SymlinkPair>> symlinks()       { return {symlinks_.begin(), symlinks_.end()}; }
@@ -406,29 +410,50 @@ public:
 
     //comparison result
     virtual CompareFileResult getCategory() const = 0;
+    virtual CompareFileResult getCategoryMv() const; // accounts for moveMode
     virtual Zstringc getCategoryCustomDescription() const = 0; //optional
 
     //sync settings
     void setSyncDir(SyncDirection newDir);
     const SyncDirection & getSyncDir() const { return syncDir_; }
+    virtual void setSyncDirMv(SyncDirection newDir); // accounts for moveMode
     void setSyncDirConflict(const Zstringc& description); //set syncDir = SyncDirection::none + fill conflict description
+    virtual void setSyncDirConflictMv(const Zstringc& description); // accounts for moveMode
 
     bool isActive() const { return selectedForSync_; }
     void setActive(bool active);
+    virtual bool isActiveMv() const; // accounts for moveMode
+    virtual void setActiveMv(bool active); // accounts for moveMode
 
     //sync operation
     virtual SyncOperation testSyncOperation(SyncDirection testSyncDir) const; //"what if" semantics! assumes "active, no conflict, no recursion (directory)!
+    virtual SyncOperation testSyncOperationMv(SyncDirection testSyncDir) const; // accounts for moveMode
     virtual SyncOperation getSyncOperation() const;
+    virtual SyncOperation getSyncOperationMv() const; // accounts for moveMode
     std::wstring getSyncOpConflict() const; //return conflict when determining sync direction or (still unresolved) conflict during categorization
+
+    virtual FilePair* getMovePair() const; // nullptr by default; overridden in FilePair
 
     const ContainerObject& parent() const { return parent_; }
     /**/  ContainerObject& parent()       { return parent_; }
+    template <SelectSide side>
+    ContainerObject& parentSide(); // accounts for moveMode
+    template <SelectSide side>
+    const ContainerObject& parentSide() const;
+    ContainerObject& parentMv();
+    const ContainerObject& parentMv() const;
+
     const BaseFolderPair& base() const { return parent_.getBase(); }
     /**/  BaseFolderPair& base()       { return parent_.getBase(); }
 
     bool passFileFilter(const PathFilter& filter) const; //optimized for perf!
 
     virtual void flip();
+
+    // moveMode-aware versions:
+    template <SelectSide side> bool isEmptyMv() const;
+    template <SelectSide side> Zstring getItemNameMv() const;
+    template <SelectSide side> Zstring getRelativePathMv() const;
 
     template <SelectSide side>
     void setItemName(const Zstring& itemName);
@@ -567,6 +592,7 @@ public:
         attrR_(attrR) {}
 
     CompareFileResult getCategory() const override;
+    CompareFileResult getCategoryMv() const override;
 
     template <SelectSide side> time_t       getLastWriteTime() const;
     template <SelectSide side> uint64_t          getFileSize() const;
@@ -575,12 +601,24 @@ public:
     template <SelectSide side> AFS::FingerPrint getFilePrint() const;
     template <SelectSide side> void clearFilePrint();
 
+    // moveMode-aware versions:
+    template <SelectSide side> time_t       getLastWriteTimeMv() const;
+    template <SelectSide side> uint64_t          getFileSizeMv() const;
+    template <SelectSide side> bool        isFollowedSymlinkMv() const;
+    template <SelectSide side> FileAttributes  getAttributesMv() const;
 
     void setMovePair(FilePair* ref); //reference to corresponding moved/renamed file
-    FilePair* getMovePair() const; //may be nullptr
+    FilePair* getMovePair() const override; //may be nullptr
 
     SyncOperation testSyncOperation(SyncDirection testSyncDir) const override; //semantics: "what if"! assumes "active, no conflict, no recursion (directory)!
+    SyncOperation testSyncOperationMv(SyncDirection testSyncDir) const override;
     SyncOperation getSyncOperation() const override;
+    SyncOperation getSyncOperationMv() const override;
+
+    void setActiveMv(bool active) override;
+    bool isActiveMv() const override;
+    void setSyncDirMv(SyncDirection newDir) override;
+    void setSyncDirConflictMv(const Zstringc& description) override;
 
     template <SelectSide sideTrg>
     void setSyncedTo(uint64_t fileSize,
@@ -1614,6 +1652,360 @@ time_t SymlinkPair::getLastWriteTime() const
 {
     assert(!isEmpty<side>());
     return selectParam<side>(attrL_, attrR_).modTime;
+}
+
+// ---------------------- Mv (move-mode-aware) implementations ----------------------
+
+inline
+FilePair* FileSystemObject::getMovePair() const
+{
+    return nullptr;
+}
+
+inline
+CompareFileResult FileSystemObject::getCategoryMv() const
+{
+    return getCategory();
+}
+
+inline
+SyncOperation FileSystemObject::getSyncOperationMv() const
+{
+    return getSyncOperation();
+}
+
+inline
+SyncOperation FileSystemObject::testSyncOperationMv(SyncDirection testSyncDir) const
+{
+    return testSyncOperation(testSyncDir);
+}
+
+inline
+bool FileSystemObject::isActiveMv() const
+{
+    return isActive();
+}
+
+inline
+void FileSystemObject::setActiveMv(bool active)
+{
+    setActive(active);
+}
+
+inline
+void FileSystemObject::setSyncDirMv(SyncDirection newDir)
+{
+    setSyncDir(newDir);
+}
+
+inline
+void FileSystemObject::setSyncDirConflictMv(const Zstringc& description)
+{
+    setSyncDirConflict(description);
+}
+
+// Use compile-time side dispatch via template; runtime moveMode check via virtual getMovePair()
+template <SelectSide side> inline
+bool FileSystemObject::isEmptyMv() const
+{
+    if (getMovePair())
+    {
+        if (moveMode == SelectSide::left && isEmpty<SelectSide::right>())
+        {
+            if constexpr (side == SelectSide::left)
+                return isEmpty<SelectSide::left>();
+            else
+                return false; // right side exists in combined view
+        }
+        if (moveMode == SelectSide::right && isEmpty<SelectSide::left>())
+        {
+            if constexpr (side == SelectSide::right)
+                return isEmpty<SelectSide::right>();
+            else
+                return false; // left side exists in combined view
+        }
+    }
+    return isEmpty<side>();
+}
+
+
+template <SelectSide side> inline
+Zstring FileSystemObject::getItemNameMv() const
+{
+    if (FilePair* mp = getMovePair())
+    {
+        if (moveMode == SelectSide::left && isEmpty<SelectSide::right>())
+        {
+            if constexpr (side == SelectSide::left)
+                return getItemName<SelectSide::left>();
+            else
+                return mp->getItemName<SelectSide::right>();
+        }
+        if (moveMode == SelectSide::right && isEmpty<SelectSide::left>())
+        {
+            if constexpr (side == SelectSide::right)
+                return getItemName<SelectSide::right>();
+            else
+                return mp->getItemName<SelectSide::left>();
+        }
+    }
+    return getItemName<side>();
+}
+
+
+template <SelectSide side> inline
+Zstring FileSystemObject::getRelativePathMv() const
+{
+    if (FilePair* mp = getMovePair())
+    {
+        if (moveMode == SelectSide::left && isEmpty<SelectSide::right>())
+        {
+            if constexpr (side == SelectSide::left)
+                return getRelativePath<SelectSide::left>();
+            else
+                return mp->getRelativePath<SelectSide::right>();
+        }
+        if (moveMode == SelectSide::right && isEmpty<SelectSide::left>())
+        {
+            if constexpr (side == SelectSide::right)
+                return getRelativePath<SelectSide::right>();
+            else
+                return mp->getRelativePath<SelectSide::left>();
+        }
+    }
+    return getRelativePath<side>();
+}
+
+
+template <SelectSide side> inline
+ContainerObject& FileSystemObject::parentSide()
+{
+    if (FilePair* mp = getMovePair())
+    {
+        if (moveMode == SelectSide::left && isEmpty<SelectSide::right>())
+        {
+            if constexpr (side == SelectSide::left)
+                return parent();
+            else
+                return mp->parent();
+        }
+        if (moveMode == SelectSide::right && isEmpty<SelectSide::left>())
+        {
+            if constexpr (side == SelectSide::right)
+                return parent();
+            else
+                return mp->parent();
+        }
+    }
+    return parent();
+}
+
+template <SelectSide side> inline
+const ContainerObject& FileSystemObject::parentSide() const
+{
+    if (const FilePair* mp = getMovePair())
+    {
+        if (moveMode == SelectSide::left && isEmpty<SelectSide::right>())
+        {
+            if constexpr (side == SelectSide::left)
+                return parent();
+            else
+                return mp->parent();
+        }
+        if (moveMode == SelectSide::right && isEmpty<SelectSide::left>())
+        {
+            if constexpr (side == SelectSide::right)
+                return parent();
+            else
+                return mp->parent();
+        }
+    }
+    return parent();
+}
+
+inline ContainerObject& FileSystemObject::parentMv()
+{
+    return (moveMode == SelectSide::left) ? parentSide<SelectSide::left>() : parentSide<SelectSide::right>();
+}
+
+inline const ContainerObject& FileSystemObject::parentMv() const
+{
+    return (moveMode == SelectSide::left) ? parentSide<SelectSide::left>() : parentSide<SelectSide::right>();
+}
+
+// ---------------------- FilePair Mv overrides ----------------------
+
+inline
+CompareFileResult FilePair::getCategoryMv() const
+{
+    if (getMovePair())
+    {
+        if ((moveMode == SelectSide::left  && isEmpty<SelectSide::right>()) ||
+            (moveMode == SelectSide::right && isEmpty<SelectSide::left >()))
+            return FILE_RENAMED;
+        else
+            assert(false);
+    }
+    return getCategory();
+}
+
+
+inline
+SyncOperation FilePair::getSyncOperationMv() const
+{
+    SyncOperation op = getSyncOperation();
+    if (getMovePair())
+    {
+        if (moveMode == SelectSide::left  && isEmpty<SelectSide::right>())
+        {
+            switch (op)
+            {
+                case SO_MOVE_LEFT_FROM:  return SO_RENAME_RIGHT;
+                case SO_MOVE_LEFT_TO:    return SO_RENAME_LEFT;
+                default: assert(false);
+            }
+        }
+        else if (moveMode == SelectSide::right && isEmpty<SelectSide::left >())
+        {
+            switch (op)
+            {
+                case SO_MOVE_RIGHT_FROM: return SO_RENAME_LEFT;
+                case SO_MOVE_RIGHT_TO:   return SO_RENAME_RIGHT;
+                default: assert(false);
+            }
+        }
+        else assert(false);
+    }
+    return op;
+}
+
+
+inline
+SyncOperation FilePair::testSyncOperationMv(SyncDirection testSyncDir) const
+{
+    SyncOperation op = testSyncOperation(testSyncDir);
+    if (getMovePair())
+    {
+        if (moveMode == SelectSide::left  && isEmpty<SelectSide::right>())
+        {
+            switch (op)
+            {
+                case SO_MOVE_LEFT_FROM:  return SO_RENAME_RIGHT;
+                case SO_MOVE_LEFT_TO:    return SO_RENAME_LEFT;
+                default: assert(false);
+            }
+        }
+        else if (moveMode == SelectSide::right && isEmpty<SelectSide::left >())
+        {
+            switch (op)
+            {
+                case SO_MOVE_RIGHT_FROM: return SO_RENAME_LEFT;
+                case SO_MOVE_RIGHT_TO:   return SO_RENAME_RIGHT;
+                default: assert(false);
+            }
+        }
+        else assert(false);
+    }
+    return op;
+}
+
+
+inline
+bool FilePair::isActiveMv() const
+{
+    if (getMovePair())
+    {
+        assert(isActive() == getMovePair()->isActive());
+        return isActive();
+    }
+    return isActive();
+}
+
+
+inline
+void FilePair::setActiveMv(bool active)
+{
+    setActive(active);
+    if (FilePair* mp = getMovePair())
+        mp->setActive(active);
+}
+
+
+inline
+void FilePair::setSyncDirMv(SyncDirection newDir)
+{
+    setSyncDir(newDir);
+    if (FilePair* mp = getMovePair())
+        mp->setSyncDir(newDir);
+}
+
+
+inline
+void FilePair::setSyncDirConflictMv(const Zstringc& description)
+{
+    setSyncDirConflict(description);
+    if (FilePair* mp = getMovePair())
+        mp->setSyncDirConflict(description);
+}
+
+
+template <SelectSide side> inline
+time_t FilePair::getLastWriteTimeMv() const
+{
+    if (auto mp = getMovePair();
+        mp && ((moveMode == SelectSide::left  && isEmpty<SelectSide::right>()) ||
+               (moveMode == SelectSide::right && isEmpty<SelectSide::left >())))
+    {
+        if (!isEmpty<side>())
+            return getLastWriteTime<side>();
+        return mp->getLastWriteTime<side>();
+    }
+    return getLastWriteTime<side>();
+}
+
+
+template <SelectSide side> inline
+uint64_t FilePair::getFileSizeMv() const
+{
+    if (auto mp = getMovePair();
+        mp && ((moveMode == SelectSide::left  && isEmpty<SelectSide::right>()) ||
+               (moveMode == SelectSide::right && isEmpty<SelectSide::left >())))
+    {
+        if (!isEmpty<side>())
+            return getFileSize<side>();
+        return mp->getFileSize<side>();
+    }
+    return getFileSize<side>();
+}
+
+
+template <SelectSide side> inline
+bool FilePair::isFollowedSymlinkMv() const
+{
+    if (auto mp = getMovePair();
+        mp && ((moveMode == SelectSide::left  && isEmpty<SelectSide::right>()) ||
+               (moveMode == SelectSide::right && isEmpty<SelectSide::left >())))
+    {
+        if (!isEmpty<side>())
+            return isFollowedSymlink<side>();
+        return mp->isFollowedSymlink<side>();
+    }
+    return isFollowedSymlink<side>();
+}
+
+
+template <SelectSide side> inline
+FileAttributes FilePair::getAttributesMv() const
+{
+    if (auto mp = getMovePair();
+        mp && ((moveMode == SelectSide::left  && isEmpty<SelectSide::right>()) ||
+               (moveMode == SelectSide::right && isEmpty<SelectSide::left >())))
+    {
+        if (!isEmpty<side>())
+            return getAttributes<side>();
+        return mp->getAttributes<side>();
+    }
+    return getAttributes<side>();
 }
 }
 

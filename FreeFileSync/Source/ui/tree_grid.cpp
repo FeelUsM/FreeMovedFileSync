@@ -34,10 +34,10 @@ inline wxColor getColorPercentBackground() { return {0xf8, 0xf8, 0xf8}; }
 Zstring getFolderPairName(const FolderPair& folder)
 {
     if (folder.hasEquivalentItemNames())
-        return folder.getItemName<SelectSide::left>();
+        return folder.getItemNameMv<SelectSide::left>();
     else
-        return folder.getItemName<SelectSide::left >() + Zstr(" | ") +
-               folder.getItemName<SelectSide::right>();
+        return folder.getItemNameMv<SelectSide::left >() + Zstr(" | ") +
+               folder.getItemNameMv<SelectSide::right>();
 }
 }
 
@@ -76,20 +76,20 @@ void TreeView::extractVisibleSubtree(ContainerObject& conObj, //in
     auto getBytes = [](const FilePair& file) //MSVC screws up miserably if we put this lambda into std::for_each
     {
 #if 0 //give accumulated bytes the semantics of a sync preview?
-        switch (getEffectiveSyncDir(file.getSyncOperation()))
+        switch (getEffectiveSyncDir(file.getSyncOperationMv()))
         {
             case SyncDirection::none: break;
-            case SyncDirection::left:  return file.getFileSize<SelectSide::right>();
-            case SyncDirection::right: return file.getFileSize<SelectSide::left>();
+            case SyncDirection::left:  return file.getFileSizeMv<SelectSide::right>();
+            case SyncDirection::right: return file.getFileSizeMv<SelectSide::left>();
         }
 #endif
         //prefer file-browser semantics over sync preview (=> always show useful numbers, even for SyncDirection::none)
         //discussion: https://freefilesync.org/forum/viewtopic.php?t=1595
-        return std::max(file.isEmpty<SelectSide::left >() ? 0 : file.getFileSize<SelectSide::left>(),
-                        file.isEmpty<SelectSide::right>() ? 0 : file.getFileSize<SelectSide::right>());
+        return std::max(file.isEmptyMv<SelectSide::left >() ? 0 : file.getFileSizeMv<SelectSide::left>(),
+                        file.isEmptyMv<SelectSide::right>() ? 0 : file.getFileSizeMv<SelectSide::right>());
     };
 
-    for (FilePair& file : conObj.files())
+    for (FilePair& file : conObj.filesMv())
         if (pred(file))
         {
             cont.bytesNet += getBytes(file);
@@ -519,10 +519,10 @@ void TreeView::applyDifferenceFilter(bool showExcluded,
                 equalFilesActive,
                 conflictFilesActive](const FileSystemObject& fsObj) -> bool
     {
-        if (!fsObj.isActive() && !showExcluded)
+        if (!fsObj.isActiveMv() && !showExcluded)
             return false;
 
-        switch (fsObj.getCategory())
+        switch (fsObj.getCategoryMv())
         {
             case FILE_LEFT_ONLY:
                 return leftOnlyFilesActive;
@@ -569,10 +569,10 @@ void TreeView::applyActionFilter(bool showExcluded,
                 syncEqualActive,
                 conflictFilesActive](const FileSystemObject& fsObj) -> bool
     {
-        if (!fsObj.isActive() && !showExcluded)
+        if (!fsObj.isActiveMv() && !showExcluded)
             return false;
 
-        switch (fsObj.getSyncOperation())
+        switch (fsObj.getSyncOperationMv())
         {
             case SO_CREATE_LEFT:
                 return syncCreateLeftActive;
@@ -888,7 +888,7 @@ private:
                             else if (auto dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
                             {
                                 nodeIcon = dirIcon_;
-                                isActive = dir->folder.isActive();
+                                isActive = dir->folder.isActiveMv();
                             }
                             else if (dynamic_cast<const TreeView::FilesNode*>(node.get()))
                                 nodeIcon = fileIcon_;

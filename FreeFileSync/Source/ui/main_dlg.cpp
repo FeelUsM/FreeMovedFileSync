@@ -1409,7 +1409,7 @@ std::vector<FileSystemObject*> expandSelectionForPartialSync(const std::vector<F
     [&](FilePair& file)
     {
         output.push_back(&file);
-        switch (file.getSyncOperation()) //evaluate comparison result and sync direction
+        switch (file.getSyncOperationMv()) //evaluate comparison result and sync direction
         {
             case SO_MOVE_LEFT_FROM:
             case SO_MOVE_LEFT_TO:
@@ -1446,7 +1446,7 @@ bool selectionIncludesNonEqualItem(const std::vector<FileSystemObject*>& selecti
     struct ItemFound {};
     try
     {
-        auto onFsItem = [](FileSystemObject& fsObj) { if (fsObj.getSyncOperation() != SO_EQUAL) throw ItemFound(); };
+        auto onFsItem = [](FileSystemObject& fsObj) { if (fsObj.getSyncOperationMv() != SO_EQUAL) throw ItemFound(); };
 
         for (FileSystemObject* fsObj : selection)
             visitFSObjectRecursively(*fsObj, onFsItem, onFsItem, onFsItem);
@@ -1531,11 +1531,11 @@ void MainDialog::copyPathsToClipboard(const std::vector<FileSystemObject*>& sele
         };
 
         for (const FileSystemObject* fsObj : selectionL)
-            //if (!fsObj->isEmpty<SelectSide::left>())
+            //if (!fsObj->isEmptyMv<SelectSide::left>())
             appendPath(fsObj->getAbstractPath<SelectSide::left>());
 
         for (const FileSystemObject* fsObj : selectionR)
-            //if (!fsObj->isEmpty<SelectSide::right>())
+            //if (!fsObj->isEmptyMv<SelectSide::right>())
             appendPath(fsObj->getAbstractPath<SelectSide::right>());
 
         setClipboardText(clipBuf);
@@ -1576,7 +1576,7 @@ std::vector<FileSystemObject*> MainDialog::getTreeSelection() const
                 //selecting root means "select everything", *ignoring* current view filter!
                 for (FileSystemObject& fsObj : root->baseFolder.subfolders()) //no need to explicitly add child elements!
                     output.push_back(&fsObj);
-                for (FileSystemObject& fsObj : root->baseFolder.files())
+                for (FileSystemObject& fsObj : root->baseFolder.filesMv())
                     output.push_back(&fsObj);
                 for (FileSystemObject& fsObj : root->baseFolder.symlinks())
                     output.push_back(&fsObj);
@@ -1602,11 +1602,11 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
     std::vector<const FileSystemObject*> copyRight;
 
     for (const FileSystemObject* fsObj : selectionL)
-        if (!fsObj->isEmpty<SelectSide::left>())
+        if (!fsObj->isEmptyMv<SelectSide::left>())
             copyLeft.push_back(fsObj);
 
     for (const FileSystemObject* fsObj : selectionR)
-        if (!fsObj->isEmpty<SelectSide::right>())
+        if (!fsObj->isEmptyMv<SelectSide::right>())
             copyRight.push_back(fsObj);
 
     if (copyLeft.empty() && copyRight.empty())
@@ -1673,8 +1673,8 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
     std::vector<FileSystemObject*> deleteLeft  = selectionL;
     std::vector<FileSystemObject*> deleteRight = selectionR;
 
-    std::erase_if(deleteLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); });
-    std::erase_if(deleteRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); });
+    std::erase_if(deleteLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmptyMv<SelectSide::left >(); });
+    std::erase_if(deleteRight, [](const FileSystemObject* fsObj) { return fsObj->isEmptyMv<SelectSide::right>(); });
 
     if (deleteLeft.empty() && deleteRight.empty())
         return; //harmonize with onGridContextRim(): this function should be a no-op iff context menu option is disabled!
@@ -1738,8 +1738,8 @@ void MainDialog::renameSelectedFiles(const std::vector<FileSystemObject*>& selec
     std::vector<FileSystemObject*> renameLeft  = selectionL;
     std::vector<FileSystemObject*> renameRight = selectionR;
 
-    std::erase_if(renameLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); });
-    std::erase_if(renameRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); });
+    std::erase_if(renameLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmptyMv<SelectSide::left >(); });
+    std::erase_if(renameRight, [](const FileSystemObject* fsObj) { return fsObj->isEmptyMv<SelectSide::right>(); });
 
     if (renameLeft.empty() && renameRight.empty())
         return; //harmonize with onGridContextRim(): this function should be a no-op iff context menu option is disabled!
@@ -1747,10 +1747,10 @@ void MainDialog::renameSelectedFiles(const std::vector<FileSystemObject*>& selec
 
     std::vector<Zstring> fileNamesOld;
     for (const FileSystemObject* fsObj : renameLeft)
-        fileNamesOld.push_back(fsObj->getItemName<SelectSide::left>());
+        fileNamesOld.push_back(fsObj->getItemNameMv<SelectSide::left>());
 
     for (const FileSystemObject* fsObj : renameRight)
-        fileNamesOld.push_back(fsObj->getItemName<SelectSide::right>());
+        fileNamesOld.push_back(fsObj->getItemNameMv<SelectSide::right>());
 
     FocusPreserver fp;
 
@@ -1794,14 +1794,14 @@ AbstractPath getExistingParentFolder(const FileSystemObject& fsObj)
 {
     auto folder = dynamic_cast<const FolderPair*>(&fsObj);
     if (!folder)
-        folder = dynamic_cast<const FolderPair*>(&fsObj.parent());
+        folder = dynamic_cast<const FolderPair*>(&fsObj.parentSide<side>());
 
     while (folder)
     {
-        if (!folder->isEmpty<side>())
+        if (!folder->isEmptyMv<side>())
             return folder->getAbstractPath<side>();
 
-        folder = dynamic_cast<const FolderPair*>(&folder->parent());
+        folder = dynamic_cast<const FolderPair*>(&folder->parentSide<side>());
     }
     return fsObj.base().getAbstractPath<side>();
 }
@@ -1810,11 +1810,11 @@ AbstractPath getExistingParentFolder(const FileSystemObject& fsObj)
 template <SelectSide side, class Function>
 void extractFileDescriptor(const FileSystemObject& fsObj, Function onDescriptor)
 {
-    if (!fsObj.isEmpty<side>())
+    if (!fsObj.isEmptyMv<side>())
         visitFSObject(fsObj, [](const FolderPair& folder) {},
     [&](const FilePair& file)
     {
-        onDescriptor(FileDescriptor{file.getAbstractPath<side>(), file.getAttributes<side>()});
+        onDescriptor(FileDescriptor{file.getAbstractPath<side>(), file.getAttributesMv<side>()});
     },
     [](const SymlinkPair& symlink) {});
 }
@@ -1862,8 +1862,8 @@ std::vector<ItemPathInfo> getItemPathInfo(const std::vector<FileSystemObject*>& 
         const Zstring itemPath2   = AFS::isNullPath(basePath2) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->         getAbstractPath<side2>()));
         const Zstring itemName    = AFS::isNullPath(basePath ) ? Zstr("") :                AFS::getItemName   (fsObj->         getAbstractPath<side >());
         const Zstring itemName2   = AFS::isNullPath(basePath2) ? Zstr("") :                AFS::getItemName   (fsObj->         getAbstractPath<side2>());
-        const Zstring parentPath  = AFS::isNullPath(basePath ) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->parent().getAbstractPath<side >()));
-        const Zstring parentPath2 = AFS::isNullPath(basePath2) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->parent().getAbstractPath<side2>()));
+        const Zstring parentPath  = AFS::isNullPath(basePath ) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->parentSide<side >().template getAbstractPath<side >()));
+        const Zstring parentPath2 = AFS::isNullPath(basePath2) ? Zstr("") : utfTo<Zstring>(AFS::getDisplayPath(fsObj->parentSide<side2>().template getAbstractPath<side2>()));
 
         Zstring localPath;
         Zstring localPath2;
@@ -1929,14 +1929,14 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
             AbstractPath itemPath = getNullPath();
             if (!selectionL.empty())
             {
-                if (selectionL[0]->isEmpty<SelectSide::left>())
+                if (selectionL[0]->isEmptyMv<SelectSide::left>())
                     return openFolderInFileBrowser(getExistingParentFolder<SelectSide::left>(*selectionL[0])); //throw FileError
 
                 itemPath = selectionL[0]->getAbstractPath<SelectSide::left>();
             }
             else if (!selectionR.empty())
             {
-                if (selectionR[0]->isEmpty<SelectSide::right>())
+                if (selectionR[0]->isEmptyMv<SelectSide::right>())
                     return openFolderInFileBrowser(getExistingParentFolder<SelectSide::right>(*selectionR[0])); //throw FileError
 
                 itemPath = selectionR[0]->getAbstractPath<SelectSide::right>();
@@ -2298,7 +2298,7 @@ void MainDialog::onTreeKeyEvent(wxKeyEvent& event)
             case WXK_SPACE:
             case WXK_NUMPAD_SPACE:
                 if (!selection.empty())
-                    setIncludedManually(selection, m_bpButtonShowExcluded->isActive() && !selection[0]->isActive());
+                    setIncludedManually(selection, m_bpButtonShowExcluded->isActive() && !selection[0]->isActiveMv());
                 //always exclude items if "m_bpButtonShowExcluded is unchecked" => yes, it's possible to have already unchecked items in selection, so we need to overwrite:
                 //e.g. select root node while the first item returned is not shown on grid!
                 return;
@@ -2396,7 +2396,7 @@ void MainDialog::onGridKeyEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
             case WXK_SPACE:
             case WXK_NUMPAD_SPACE:
                 if (!selection.empty())
-                    setIncludedManually(selection, m_bpButtonShowExcluded->isActive() && !selection[0]->isActive());
+                    setIncludedManually(selection, m_bpButtonShowExcluded->isActive() && !selection[0]->isActiveMv());
                 return;
 
             case WXK_DELETE:
@@ -2593,7 +2593,7 @@ std::vector<Zstring> getFilterPhrasesRel(const std::vector<FileSystemObject*>& s
     for (const FileSystemObject* fsObj : selection)
     {
         //#pragma warning(suppress: 6011) -> fsObj bound in this context!
-        Zstring phrase = FILE_NAME_SEPARATOR + fsObj->getRelativePath<side>();
+        Zstring phrase = FILE_NAME_SEPARATOR + fsObj->getRelativePathMv<side>();
 
         const bool isFolder = dynamic_cast<const FolderPair*>(fsObj) != nullptr;
         if (isFolder)
@@ -2635,8 +2635,8 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
     //----------------------------------------------------------------------------------------------------
     auto getImage = [&](SyncDirection dir, SyncOperation soDefault)
     {
-        return mirrorIfRtl(getSyncOpImage(!selection.empty() && selection[0]->getSyncOperation() != SO_EQUAL ?
-                                          selection[0]->testSyncOperation(dir) : soDefault));
+        return mirrorIfRtl(getSyncOpImage(!selection.empty() && selection[0]->getSyncOperationMv() != SO_EQUAL ?
+                                          selection[0]->testSyncOperationMv(dir) : soDefault));
     };
     const wxImage opRight = getImage(SyncDirection::right, SO_OVERWRITE_RIGHT);
     const wxImage opNone  = getImage(SyncDirection::none,  SO_DO_NOTHING     );
@@ -2665,8 +2665,8 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
 
             const bool isFolder = dynamic_cast<const FolderPair*>(selection[0]) != nullptr;
 
-            const Zstring& relPathL = selection[0]->getRelativePath<SelectSide::left >();
-            const Zstring& relPathR = selection[0]->getRelativePath<SelectSide::right>();
+            const Zstring& relPathL = selection[0]->getRelativePathMv<SelectSide::left >();
+            const Zstring& relPathR = selection[0]->getRelativePathMv<SelectSide::right>();
 
             //by extension
             const Zstring extensionL = getFileExtension(relPathL);
@@ -2717,7 +2717,7 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
     addFilterMenu(_("&Include via filter:"), loadImage("filter_include", dipToScreen(getMenuIconDipSize())), true);
     addFilterMenu(_("&Exclude via filter:"), loadImage("filter_exclude", dipToScreen(getMenuIconDipSize())), false);
     //----------------------------------------------------------------------------------------------------
-    if (m_bpButtonShowExcluded->isActive() && !selection.empty() && !selection[0]->isActive())
+    if (m_bpButtonShowExcluded->isActive() && !selection.empty() && !selection[0]->isActiveMv())
         menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setIncludedManually(selection, true); }, loadImage("checkbox_true"));
     else
         menu.addItem(_("Exclude temporarily") + L"\tSpace", [this, &selection] { setIncludedManually(selection, false); }, loadImage("checkbox_false"), !selection.empty());
@@ -2725,7 +2725,7 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
     const bool selectionContainsItemsToSync = [&]
     {
         for (FileSystemObject* fsObj : expandSelectionForPartialSync(selection))
-            if (getEffectiveSyncDir(fsObj->getSyncOperation()) != SyncDirection::none)
+            if (getEffectiveSyncDir(fsObj->getSyncOperationMv()) != SyncDirection::none)
                 return true;
         return false;
     }();
@@ -2734,8 +2734,8 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
                  loadImage("start_sync_selection", dipToScreen(getMenuIconDipSize())), selectionContainsItemsToSync);
     //----------------------------------------------------------------------------------------------------
     const ptrdiff_t itemsSelected =
-    std::count_if(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::left >(); }) +
-    std::count_if(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::right>(); });
+    std::count_if(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmptyMv<SelectSide::left >(); }) +
+    std::count_if(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmptyMv<SelectSide::right>(); });
 
     //menu.addSeparator();
     //menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(selection, selection); }, wxNullImage, itemsSelected > 0);
@@ -2795,8 +2795,8 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
 
     auto getImage = [&](SyncDirection dir, SyncOperation soDefault)
     {
-        return mirrorIfRtl(getSyncOpImage(!selection.empty() && selection[0]->getSyncOperation() != SO_EQUAL ?
-                                          selection[0]->testSyncOperation(dir) : soDefault));
+        return mirrorIfRtl(getSyncOpImage(!selection.empty() && selection[0]->getSyncOperationMv() != SO_EQUAL ?
+                                          selection[0]->testSyncOperationMv(dir) : soDefault));
     };
     const wxImage opLeft  = getImage(SyncDirection::left,  SO_OVERWRITE_LEFT );
     const wxImage opRight = getImage(SyncDirection::right, SO_OVERWRITE_RIGHT);
@@ -2826,8 +2826,8 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
             const bool isFolder = dynamic_cast<const FolderPair*>((!selectionL.empty() ? selectionL : selectionR)[0]) != nullptr;
 
             const Zstring& relPath = !selectionL.empty() ?
-                                     selectionL[0]->getRelativePath<SelectSide::left >() :
-                                     selectionR[0]->getRelativePath<SelectSide::right>();
+                                     selectionL[0]->getRelativePathMv<SelectSide::left >() :
+                                     selectionR[0]->getRelativePathMv<SelectSide::right>();
             //by extension
             if (const Zstring extension = getFileExtension(relPath);
                 !extension.empty())
@@ -2861,7 +2861,7 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
     addFilterMenu(_("&Include via filter:"), loadImage("filter_include", dipToScreen(getMenuIconDipSize())), true);
     addFilterMenu(_("&Exclude via filter:"), loadImage("filter_exclude", dipToScreen(getMenuIconDipSize())), false);
     //----------------------------------------------------------------------------------------------------
-    if (m_bpButtonShowExcluded->isActive() && !selection.empty() && !selection[0]->isActive())
+    if (m_bpButtonShowExcluded->isActive() && !selection.empty() && !selection[0]->isActiveMv())
         menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setIncludedManually(selection, true); }, loadImage("checkbox_true"));
     else
         menu.addItem(_("Exclude temporarily") + L"\tSpace", [this, &selection] { setIncludedManually(selection, false); }, loadImage("checkbox_false"), !selection.empty());
@@ -2869,7 +2869,7 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
     const bool selectionContainsItemsToSync = [&]
     {
         for (FileSystemObject* fsObj : expandSelectionForPartialSync(selection))
-            if (getEffectiveSyncDir(fsObj->getSyncOperation()) != SyncDirection::none)
+            if (getEffectiveSyncDir(fsObj->getSyncOperationMv()) != SyncDirection::none)
                 return true;
         return false;
     }();
@@ -2904,8 +2904,8 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
     }
     //----------------------------------------------------------------------------------------------------
     const ptrdiff_t itemsSelected =
-    std::count_if(selectionL.begin(), selectionL.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::left >(); }) +
-    std::count_if(selectionR.begin(), selectionR.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::right>(); });
+    std::count_if(selectionL.begin(), selectionL.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmptyMv<SelectSide::left >(); }) +
+    std::count_if(selectionR.begin(), selectionR.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmptyMv<SelectSide::right>(); });
 
     menu.addSeparator();
     menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(selectionL, selectionR); }, wxNullImage, itemsSelected > 0);
@@ -5079,15 +5079,15 @@ namespace
 {
 void appendInactive(ContainerObject& conObj, std::vector<FileSystemObject*>& inactiveItems)
 {
-    for (FilePair& file : conObj.files())
-        if (!file.isActive())
+    for (FilePair& file : conObj.filesMv())
+        if (!file.isActiveMv())
             inactiveItems.push_back(&file);
     for (SymlinkPair& symlink : conObj.symlinks())
-        if (!symlink.isActive())
+        if (!symlink.isActiveMv())
             inactiveItems.push_back(&symlink);
     for (FolderPair& folder : conObj.subfolders())
     {
-        if (!folder.isActive())
+        if (!folder.isActiveMv())
             inactiveItems.push_back(&folder);
         appendInactive(folder, inactiveItems); //recurse
     }
@@ -5107,7 +5107,7 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
 
     for (FileSystemObject* fsObj : expandSelectionForPartialSync(selection))
     {
-        switch (fsObj->getSyncOperation())
+        switch (fsObj->getSyncOperationMv())
         {
             case SO_CREATE_LEFT:
             case SO_CREATE_RIGHT:
@@ -5129,7 +5129,7 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
             case SO_EQUAL:
                 break;
         }
-        if (fsObj->isActive())
+        if (fsObj->isActiveMv())
             selectedActive.push_back(fsObj);
     }
 
@@ -5147,7 +5147,7 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
         setActiveStatus(false, folderCmp_); //limit to folderCmpSelect? => no, let's also activate non-participating folder pairs, if only to visually match user selection
 
         for (FileSystemObject* fsObj : selectedActive)
-            fsObj->setActive(true);
+            fsObj->setActiveMv(true);
 
         //don't run a full updateGui() (which would remove excluded rows) since we're only temporarily excluding:
         filegrid::refresh(*m_gridMainL, *m_gridMainC, *m_gridMainR);
@@ -5158,7 +5158,7 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
 
             //inactive items are expected to still exist after sync! => no need for FileSystemObject::ObjectId
             for (FileSystemObject* fsObj : inactiveItems)
-            fsObj->setActive(false);
+            fsObj->setActiveMv(false);
 
             filegrid::refresh(*m_gridMainL, *m_gridMainC, *m_gridMainR); //e.g. if user cancels confirmation popup
             m_gridOverview->Refresh();

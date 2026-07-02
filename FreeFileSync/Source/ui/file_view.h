@@ -24,7 +24,7 @@ public:
     explicit FileView(FolderComparison& folderCmp); //takes weak (non-owning) references
 
     size_t rowsOnView() const { return viewRef_  .size(); } //only visible elements
-    size_t rowsTotal () const { return sortedRef_.size(); } //total rows available
+    size_t rowsTotal () const { return sortedRefL_.size(); } //total rows available
 
     //returns nullptr if object is not found; complexity: constant!
     const FileSystemObject* getFsObject(size_t row) const { return row < viewRef_.size() ? viewRef_[row].objRef.lock().get() : nullptr; }
@@ -42,7 +42,9 @@ public:
         FolderPair* folderGroupObj = nullptr; //nullptr if group is BaseFolderPair (or fsObj not found)
         FileSystemObject* fsObj    = nullptr; //nullptr if object is not found
     };
-    PathDrawInfo getDrawInfo(size_t row); //complexity: constant!
+    PathDrawInfo getDrawInfo(size_t row); //complexity: constant! uses current moveMode
+    template <SelectSide side>
+    PathDrawInfo getDrawInfo(size_t row); //side-specific grouping
 
     struct FileStats
     {
@@ -150,7 +152,8 @@ private:
     std::vector<ViewRow> viewRef_; //partial view on sortedRef_
     /*             /|\
                     | (applyFilterBy...)      */
-    std::vector<std::weak_ptr<FileSystemObject>> sortedRef_; //flat view of weak pointers on folderCmp; may be sorted
+    std::vector<std::weak_ptr<FileSystemObject>> sortedRefL_; //flat view, left-mode (filtered for move mode)
+    std::vector<std::weak_ptr<FileSystemObject>> sortedRefR_; //flat view, right-mode (filtered for move mode)
     /*             /|\
                     | (constructor)
            FolderComparison folderCmp         */

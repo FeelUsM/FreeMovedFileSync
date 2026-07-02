@@ -273,7 +273,7 @@ public:
         //also mark all items with any matching ancestors
         for (const FileSystemObject* fsObj2 = &fsObj;;)
         {
-            const ContainerObject& parent = fsObj2->parent();
+            const ContainerObject& parent = fsObj2->parentMv();
             if (markedContainer_.contains(&parent))
                 return true;
 
@@ -434,7 +434,7 @@ public:
                 const ptrdiff_t currentRow = rowFirst - (preloadSize + 1) / 2 + getAlternatingPos(i, visibleRowCount + preloadSize); //for odd preloadSize start one row earlier
 
                 if (const FileSystemObject* fsObj = getFsObject(currentRow))
-                    if (!fsObj->isEmpty<side>() && /*bool isFileOrSymlink = */ !dynamic_cast<const FolderPair*>(fsObj) &&
+                    if (!fsObj->isEmptyMv<side>() && /*bool isFileOrSymlink = */ !dynamic_cast<const FolderPair*>(fsObj) &&
                         !iconBuf->readyForRetrieval(fsObj->template getAbstractPath<side>()))
                         newLoad.emplace_back(i, fsObj->template getAbstractPath<side>()); //insert least-important items on outer rim first
             }
@@ -456,7 +456,7 @@ public:
 
                 if (isFailedLoad(currentRow)) //find failed attempts to load icon
                     if (const FileSystemObject* fsObj = getFsObject(currentRow))
-                        if (!fsObj->isEmpty<side>() &&  /*bool isFileOrSymlink = */ !dynamic_cast<const FolderPair*>(fsObj))
+                        if (!fsObj->isEmptyMv<side>() &&  /*bool isFileOrSymlink = */ !dynamic_cast<const FolderPair*>(fsObj))
                         {
                             //test if they are already loaded in buffer:
                             if (iconBuf->readyForRetrieval(fsObj->template getAbstractPath<side>()))
@@ -501,7 +501,7 @@ private:
     };
     static DisplayType getObjectDisplayType(const FileSystemObject& fsObj)
     {
-        if (!fsObj.isActive())
+        if (!fsObj.isActiveMv())
             return DisplayType::inactive;
 
         DisplayType output = DisplayType::normal;
@@ -517,15 +517,15 @@ private:
     std::wstring getValue(size_t row, ColumnType colType) const override
     {
         if (const FileSystemObject* fsObj = getFsObject(row))
-            if (!fsObj->isEmpty<side>())
+            if (!fsObj->isEmptyMv<side>())
             {
                 if (static_cast<ColumnTypeRim>(colType) == ColumnTypeRim::path)
                     switch (itemPathFormat_)
                     {
                         case ItemPathFormat::name:
-                            return utfTo<std::wstring>(fsObj->getItemName<side>());
+                            return utfTo<std::wstring>(fsObj->getItemNameMv<side>());
                         case ItemPathFormat::relative:
-                            return utfTo<std::wstring>(fsObj->getRelativePath<side>());
+                            return utfTo<std::wstring>(fsObj->getRelativePathMv<side>());
                         case ItemPathFormat::full:
                             return AFS::getDisplayPath(fsObj->getAbstractPath<side>());
                     }
@@ -539,21 +539,21 @@ private:
 
                     case ColumnTypeRim::size:
                         visitFSObject(*fsObj, [&](const FolderPair& folder) { /*value = L'<' + _("Folder") + L'>'; -> redundant!? */ },
-                        [&](const FilePair& file) { value = formatNumber(file.getFileSize<side>()); },
+                        [&](const FilePair& file) { value = formatNumber(file.getFileSizeMv<side>()); },
                         //[&](const FilePair& file) { value = numberTo<std::wstring>(file.getFilePrint<side>()); }, // -> test file id
                         [&](const SymlinkPair& symlink) { value = L'<' + _("Symlink") + L'>'; });
                         break;
 
                     case ColumnTypeRim::date:
                         visitFSObject(*fsObj, [](const FolderPair& folder) {},
-                        [&](const FilePair&       file) { value = formatUtcToLocalTime(file   .getLastWriteTime<side>()); },
+                        [&](const FilePair&       file) { value = formatUtcToLocalTime(file   .getLastWriteTimeMv<side>()); },
                         [&](const SymlinkPair& symlink) { value = formatUtcToLocalTime(symlink.getLastWriteTime<side>()); });
                         break;
 
                     case ColumnTypeRim::extension:
                         visitFSObject(*fsObj, [](const FolderPair& folder) {},
-                        [&](const FilePair&       file) { value = utfTo<std::wstring>(getFileExtension(file   .getItemName<side>())); },
-                        [&](const SymlinkPair& symlink) { value = utfTo<std::wstring>(getFileExtension(symlink.getItemName<side>())); });
+                        [&](const FilePair&       file) { value = utfTo<std::wstring>(getFileExtension(file   .getItemNameMv<side>())); },
+                        [&](const SymlinkPair& symlink) { value = utfTo<std::wstring>(getFileExtension(symlink.getItemNameMv<side>())); });
                         break;
                 }
                 return value;
@@ -569,7 +569,7 @@ private:
 
             const wxColor backCol = [&]
             {
-                if (pdi.fsObj && !pdi.fsObj->isEmpty<side>()) //do we need color indication for *inactive* empty rows? probably not...
+                if (pdi.fsObj && !pdi.fsObj->isEmptyMv<side>()) //do we need color indication for *inactive* empty rows? probably not...
                     switch (getObjectDisplayType(*pdi.fsObj))
                     {
                         case DisplayType::normal: break;
@@ -610,11 +610,11 @@ private:
                 if (const FileSystemObject* fsObj = getDataView().getFsObject(row2))
                     if (itemPathFormat_ == ItemPathFormat::name || fsObj != pdi.folderGroupObj)
 #if 0 //render same layout even when items don't exist
-                        if (fsObj->isEmpty<side>())
+                        if (fsObj->isEmptyMv<side>())
                             itemNamesWidth = ellipsisWidth;
                         else
 #endif
-                            itemWidths.push_back(getTextExtentBuffered(dc, utfTo<std::wstring>(fsObj->getItemName<side>())).x);
+                            itemWidths.push_back(getTextExtentBuffered(dc, utfTo<std::wstring>(fsObj->getItemNameMv<side>())).x);
 
             if (!itemWidths.empty())
             {
@@ -661,7 +661,7 @@ private:
         std::wstring itemName;
         if (itemPathFormat_ == ItemPathFormat::name || //hack: show folder name in item colum since groupName/groupParentFolder are unused!
             pdi.fsObj != pdi.folderGroupObj)           //=> consider groupItemNamesWidth!
-            itemName = utfTo<std::wstring>(pdi.fsObj->getItemName<side>());
+            itemName = utfTo<std::wstring>(pdi.fsObj->getItemNameMv<side>());
         //=> doesn't matter if isEmpty()! => only indicates if component should be drawn
 
         std::wstring groupName;
@@ -674,16 +674,16 @@ private:
             case ItemPathFormat::relative:
                 if (pdi.folderGroupObj)
                 {
-                    groupName         = utfTo<std::wstring>(pdi.folderGroupObj         ->template getItemName    <side>());
-                    groupParentFolder = utfTo<std::wstring>(pdi.folderGroupObj->parent().template getRelativePath<side>());
+                    groupName         = utfTo<std::wstring>(pdi.folderGroupObj         ->template getItemNameMv    <side>());
+                    groupParentFolder = utfTo<std::wstring>(pdi.folderGroupObj->parentSide<side>().template getRelativePath<side>());
                 }
                 break;
 
             case ItemPathFormat::full:
                 if (pdi.folderGroupObj)
                 {
-                    groupName         = utfTo<std::wstring>(pdi.folderGroupObj         ->template getItemName    <side>());
-                    groupParentFolder = AFS::getDisplayPath(pdi.folderGroupObj->parent().template getAbstractPath<side>());
+                    groupName         = utfTo<std::wstring>(pdi.folderGroupObj         ->template getItemNameMv    <side>());
+                    groupParentFolder = AFS::getDisplayPath(pdi.folderGroupObj->template parentSide<side>().template getAbstractPath<side>());
                 }
                 else //=> BaseFolderPair
                     groupParentFolder = AFS::getDisplayPath(pdi.fsObj->base().getAbstractPath<side>());
@@ -841,7 +841,7 @@ private:
             wxDCTextColourChanger textColor(dc);
             if (enabled && selected) //=> coordinate with renderRowBackgound()
                 textColor.Set(*wxBLACK);
-            else if (!pdi.fsObj->isEmpty<side>())
+            else if (!pdi.fsObj->isEmptyMv<side>())
                 switch (getObjectDisplayType(*pdi.fsObj))
                 {
                     case DisplayType::normal: break;
@@ -920,7 +920,7 @@ private:
                             getIconManager().startIconUpdater();
 
                         wxImage fileIcon;
-                        if (!fsObj.isEmpty<side>())
+                        if (!fsObj.isEmptyMv<side>())
                         {
                             if (/*bool isFolder = */ dynamic_cast<const FolderPair*>(&fsObj))
                                 fileIcon = getIconManager().getGenericDirIcon();
@@ -934,32 +934,32 @@ private:
                                         setFailedLoad(row); //save status of failed icon load -> used for async. icon loading
                                         //falsify only! avoid writing incorrect success status when only partially updating the DC, e.g. during scrolling,
                                         //see repaint behavior of ::ScrollWindow() function!
-                                        fileIcon = iconBuf->getIconByExtension(fsObj.template getItemName<side>()); //better than nothing
+                                        fileIcon = iconBuf->getIconByExtension(fsObj.template getItemNameMv<side>()); //better than nothing
                                     }
                                 }
                         }
 
                         if (fileIcon.IsOk())
                         {
-                            drawIcon(fileIcon, rectIcon, fsObj.isActive());
+                            drawIcon(fileIcon, rectIcon, fsObj.isActiveMv());
 
                             bool drawAsLink = false;
                             visitFSObject(fsObj, [&](const FolderPair& folder)
                             {
-                                drawAsLink = folder.isFollowedSymlink<side>();
+                                 drawAsLink = folder.isFollowedSymlink<side>();
                             },
                             [&](const FilePair& file)
                             {
-                                drawAsLink = file.isFollowedSymlink<side>() || hasLinkExtension(file.getItemName<side>());
+                                drawAsLink = file.isFollowedSymlinkMv<side>() || hasLinkExtension(file.getItemNameMv<side>());
                             },
                             [&](const SymlinkPair& symlink) { drawAsLink = true; });
 
                             if (drawAsLink)
-                                drawIcon(getIconManager().getLinkOverlayIcon(), rectIcon, fsObj.isActive());
+                                drawIcon(getIconManager().getLinkOverlayIcon(), rectIcon, fsObj.isActiveMv());
                         }
 
                         if (getViewType() == GridViewType::action)
-                            if (const auto& [cudAction, cudSide] = getCudAction(fsObj.getSyncOperation());
+                            if (const auto& [cudAction, cudSide] = getCudAction(fsObj.getSyncOperationMv());
                                 side == cudSide)
                                 switch (cudAction)
                                 {
@@ -969,7 +969,7 @@ private:
                                         {
                                             wxImage placeholderIcon = /*bool isFolder = */ dynamic_cast<const FolderPair*>(&fsObj) ?
                                                                                            getIconManager().getGenericDirIcon() :
-                                                                                           (iconBuf ? iconBuf->getIconByExtension(fsObj.template getItemName<side>()) : getIconManager().getGenericFileIcon());
+                                                                                           (iconBuf ? iconBuf->getIconByExtension(fsObj.template getItemNameMv<side>()) : getIconManager().getGenericFileIcon());
 
                                             drawIcon(placeholderIcon.ConvertToGreyscale(1.0 / 3, 1.0 / 3, 1.0 / 3). //treat all channels equally!
                                                      ConvertToDisabled(), rectIcon, true /*drawActive: [!] e.g. disabled folder, exists left only, but child item is copied*/);
@@ -978,7 +978,7 @@ private:
                                             visitFSObject(fsObj, [&](const FolderPair& folder) {}, //newly created folder won't be a symlink
                                             [&](const FilePair& file) //never a symlink, but might be a shell link
                                             {
-                                                drawAsLink = hasLinkExtension(file.getItemName<side>());
+                                                drawAsLink = hasLinkExtension(file.getItemNameMv<side>());
                                             },
                                             [&](const SymlinkPair& symlink) { drawAsLink = true; });
 
@@ -1041,7 +1041,7 @@ private:
                         }
 
                         if (!groupParentPart.empty() &&
-                            (!pdi.folderGroupObj || !pdi.folderGroupObj->isEmpty<side>())) //don't show for missing folders
+                            (!pdi.folderGroupObj || !pdi.folderGroupObj->isEmptyMv<side>())) //don't show for missing folders
                         {
                             tryDrawNavMarker(rectGroupParent);
 
@@ -1075,13 +1075,13 @@ private:
                             wxDCTextColourChanger textColorGroupName(dc);
                             //folder background: coordinate with renderRowBackgound()
                             if (!enabled || !selected)
-                                if (!pdi.folderGroupObj->isEmpty<side>() &&
-                                    !pdi.folderGroupObj->isActive())
+                                if (!pdi.folderGroupObj->isEmptyMv<side>() &&
+                                    !pdi.folderGroupObj->isActiveMv())
                                 {
                                     clearArea(dc, rectGroupNameBack, getColorInactiveBack());
                                     textColorGroupName.Set(getColorInactiveText());
                                 }
-                            drawCudHighlight(rectGroupNameBack, pdi.folderGroupObj->getSyncOperation());
+                            drawCudHighlight(rectGroupNameBack, pdi.folderGroupObj->getSyncOperationMv());
                             tryDrawNavMarker(rectGroupName);
 
                             drawFileIcon(rectGroupName, *pdi.folderGroupObj);
@@ -1093,7 +1093,7 @@ private:
                                 (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item && pdi.fsObj == pdi.folderGroupObj /*exception: extend highlight*/))
                                 drawRectangleBorder(dc, rectGroupNameBack, mouseHighlightColor_, dipToWxsize(1));
 
-                            if (!pdi.folderGroupObj->isEmpty<side>())
+                            if (!pdi.folderGroupObj->isEmptyMv<side>())
                                 drawCellText(dc, rectGroupName, groupName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupName));
                         }
                     }
@@ -1125,7 +1125,7 @@ private:
                         wxRect rectItemsBack = rectGroupItems;
                         rectItemsBack.height -= dipToWxsize(1); //preserve item separation lines!
 
-                        drawCudHighlight(rectItemsBack, pdi.fsObj->getSyncOperation());
+                        drawCudHighlight(rectItemsBack, pdi.fsObj->getSyncOperationMv());
                         tryDrawNavMarker(rectGroupItems);
 
                         if (getIconManager().getIconBuffer()) //=> also indicates whether to draw file icons or not
@@ -1142,7 +1142,7 @@ private:
                         if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item)
                             drawRectangleBorder(dc, rectItemsBack, mouseHighlightColor_, dipToWxsize(1));
 
-                        if (!pdi.fsObj->isEmpty<side>())
+                        if (!pdi.fsObj->isEmptyMv<side>())
                             drawCellText(dc, rectGroupItems, itemName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, itemName));
                     }
 
@@ -1227,7 +1227,7 @@ private:
                 const int ellipsisWidth = getTextExtentBuffered(dc, ELLIPSIS).x;
                 const int itemWidth = itemName.empty() ? 0 :
                                       (groupSepWidth + fileIconWidth + gapSize_ +
-                                       (pdi.fsObj->isEmpty<side>() ? ellipsisWidth : getTextExtentBuffered(dc, itemName).x));
+                                       (pdi.fsObj->isEmptyMv<side>() ? ellipsisWidth : getTextExtentBuffered(dc, itemName).x));
 
                 bestSize += groupParentWidth + groupNameWidth + itemWidth + gapSize_ /*[!]*/;
             }
@@ -1295,7 +1295,7 @@ private:
             if (getDataView().getEffectiveFolderPairCount() > 1)
                 toolTip += AFS::getDisplayPath(tipObj->base().getAbstractPath<side>()) + rightArrowDown_ + L"\n\n";
 
-            toolTip += utfTo<std::wstring>(tipObj->getRelativePath<side>());
+            toolTip += utfTo<std::wstring>(tipObj->getRelativePathMv<side>());
 
             //path components should follow the app layout direction and are NOT a single piece of text!
             //caveat: add Bidi support only during rendering and not in getValue() or AFS::getDisplayPath(): e.g. support "open file in Explorer"
@@ -1303,7 +1303,7 @@ private:
             replace(toolTip, L'/',   slashBidi_);
             replace(toolTip, L'\\', bslashBidi_);
 
-            if (tipObj->isEmpty<side>())
+            if (tipObj->isEmptyMv<side>())
                 toolTip += std::wstring(L"\n") + TAB_SPACE + L'<' + _("Item not existing") + L'>';
             else
                 visitFSObject(*tipObj, [&](const FolderPair& folder)
@@ -1312,8 +1312,8 @@ private:
             },
             [&](const FilePair& file)
             {
-                toolTip += std::wstring(L"\n") + TAB_SPACE + _("Size:") + L' ' + formatFilesizeShort (file.getFileSize     <side>()) +
-                           /**/         L'\n'  + TAB_SPACE + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<side>());
+                toolTip += std::wstring(L"\n") + TAB_SPACE + _("Size:") + L' ' + formatFilesizeShort (file.getFileSizeMv     <side>()) +
+                           /**/         L'\n'  + TAB_SPACE + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTimeMv<side>());
             },
             [&](const SymlinkPair& symlink)
             {
@@ -1390,7 +1390,7 @@ public:
                     case HoverAreaCenter::checkbox:
                         if (const FileSystemObject* fsObj = getFsObject(clickInitRow))
                         {
-                            const bool setIncluded = !fsObj->isActive();
+                            const bool setIncluded = !fsObj->isActiveMv();
                             CheckRowsEvent evt(rowFirst, rowLast, setIncluded);
                             refGrid().GetEventHandler()->ProcessEvent(evt);
                         }
@@ -1451,9 +1451,9 @@ private:
                 case ColumnTypeCenter::checkbox:
                     break;
                 case ColumnTypeCenter::difference:
-                    return getSymbol(fsObj->getCategory());
+                    return getSymbol(fsObj->getCategoryMv());
                 case ColumnTypeCenter::action:
-                    return getSymbol(fsObj->getSyncOperation());
+                    return getSymbol(fsObj->getSyncOperationMv());
             }
         return std::wstring();
     }
@@ -1469,7 +1469,7 @@ private:
                 if (!pdi.fsObj)
                     return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
 
-                if (!pdi.fsObj->isActive())
+                if (!pdi.fsObj->isActiveMv())
                     return getColorInactiveBack();
 
                 return getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 == 0);
@@ -1500,7 +1500,7 @@ private:
         {
             auto drawHighlightBackground = [&](const wxColor& col)
             {
-                if ((!enabled || !selected) && pdi.fsObj->isActive()) //coordinate with renderRowBackgound()!
+                if ((!enabled || !selected) && pdi.fsObj->isActiveMv()) //coordinate with renderRowBackgound()!
                 {
                     wxRect rectBack = rect;
                     if (row == pdi.groupLastRow - 1 /*last group item*/) //preserve the group separation line!
@@ -1516,7 +1516,7 @@ private:
                 {
                     const bool drawMouseHover = static_cast<HoverAreaCenter>(rowHover) == HoverAreaCenter::checkbox;
 
-                    wxImage icon = loadImage(pdi.fsObj->isActive() ?
+                    wxImage icon = loadImage(pdi.fsObj->isActiveMv() ?
                                              (drawMouseHover ? "checkbox_true_hover"  : "checkbox_true") :
                                              (drawMouseHover ? "checkbox_false_hover" : "checkbox_false"));
                     if (!enabled)
@@ -1529,7 +1529,7 @@ private:
                 case ColumnTypeCenter::difference:
                 {
                     if (getViewType() == GridViewType::difference)
-                        drawHighlightBackground(getBackGroundColorCmpDifference(pdi.fsObj->getCategory()));
+                        drawHighlightBackground(getBackGroundColorCmpDifference(pdi.fsObj->getCategoryMv()));
 
                     wxRect rectTmp = rect;
                     {
@@ -1553,16 +1553,16 @@ private:
                     };
 
                     if (getViewType() == GridViewType::difference)
-                        drawIcon(getCmpResultImage(pdi.fsObj->getCategory()), wxALIGN_CENTER);
-                    else if (pdi.fsObj->getCategory() != FILE_EQUAL) //don't show = in both middle columns
-                        drawIcon(greyScale(getCmpResultImage(pdi.fsObj->getCategory())), wxALIGN_CENTER);
+                        drawIcon(getCmpResultImage(pdi.fsObj->getCategoryMv()), wxALIGN_CENTER);
+                    else if (pdi.fsObj->getCategoryMv() != FILE_EQUAL) //don't show = in both middle columns
+                        drawIcon(greyScale(getCmpResultImage(pdi.fsObj->getCategoryMv())), wxALIGN_CENTER);
                 }
                 break;
 
                 case ColumnTypeCenter::action:
                 {
                     if (getViewType() == GridViewType::action)
-                        drawHighlightBackground(getBackGroundColorSyncAction(pdi.fsObj->getSyncOperation()));
+                        drawHighlightBackground(getBackGroundColorSyncAction(pdi.fsObj->getSyncOperationMv()));
 
                     auto drawIcon = [&](wxImage icon, int alignment)
                     {
@@ -1577,19 +1577,19 @@ private:
                     switch (rowHoverCenter)
                     {
                         case HoverAreaCenter::dirLeft:
-                            drawIcon(getSyncOpImage(pdi.fsObj->testSyncOperation(SyncDirection::left)), wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
+                            drawIcon(getSyncOpImage(pdi.fsObj->testSyncOperationMv(SyncDirection::left)), wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
                             break;
                         case HoverAreaCenter::dirNone:
-                            drawIcon(getSyncOpImage(pdi.fsObj->testSyncOperation(SyncDirection::none)), wxALIGN_CENTER);
+                            drawIcon(getSyncOpImage(pdi.fsObj->testSyncOperationMv(SyncDirection::none)), wxALIGN_CENTER);
                             break;
                         case HoverAreaCenter::dirRight:
-                            drawIcon(getSyncOpImage(pdi.fsObj->testSyncOperation(SyncDirection::right)), wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL);
+                            drawIcon(getSyncOpImage(pdi.fsObj->testSyncOperationMv(SyncDirection::right)), wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL);
                             break;
                         case HoverAreaCenter::checkbox:
                             if (getViewType() == GridViewType::action)
-                                drawIcon(getSyncOpImage(pdi.fsObj->getSyncOperation()), wxALIGN_CENTER);
-                            else if (pdi.fsObj->getSyncOperation() != SO_EQUAL) //don't show = in both middle columns
-                                drawIcon(greyScale(getSyncOpImage(pdi.fsObj->getSyncOperation())), wxALIGN_CENTER);
+                                drawIcon(getSyncOpImage(pdi.fsObj->getSyncOperationMv()), wxALIGN_CENTER);
+                            else if (pdi.fsObj->getSyncOperationMv() != SO_EQUAL) //don't show = in both middle columns
+                                drawIcon(greyScale(getSyncOpImage(pdi.fsObj->getSyncOperationMv())), wxALIGN_CENTER);
                             break;
                     }
                 }
@@ -1608,7 +1608,7 @@ private:
                     return static_cast<HoverArea>(HoverAreaCenter::checkbox);
 
                 case ColumnTypeCenter::action:
-                    if (fsObj->getSyncOperation() == SO_EQUAL) //in sync-preview equal files shall be treated like a checkbox
+                    if (fsObj->getSyncOperationMv() == SO_EQUAL) //in sync-preview equal files shall be treated like a checkbox
                         return static_cast<HoverArea>(HoverAreaCenter::checkbox);
                     /* cell: ------------------------
                              | left | middle | right|
@@ -1693,7 +1693,7 @@ private:
                 {
                     const char* imageName = [&]
                     {
-                        switch (fsObj->getCategory())
+                        switch (fsObj->getCategoryMv())
                         {
                             case FILE_RENAMED:  //similar to both "equal" and "conflict"
                             case FILE_EQUAL:             return "cat_equal";
@@ -1717,7 +1717,7 @@ private:
                 {
                     const char* imageName = [&]
                     {
-                        switch (fsObj->getSyncOperation())
+                        switch (fsObj->getSyncOperationMv())
                         {
                             case SO_CREATE_LEFT:         return "so_create_left";
                             case SO_CREATE_RIGHT:        return "so_create_right";
