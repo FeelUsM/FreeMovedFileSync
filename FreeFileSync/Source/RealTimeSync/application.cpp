@@ -27,9 +27,21 @@ using namespace rts;
 using fff::FfsExitCode;
 
 
+GLOBAL_RUN_ONCE(
+    const char* displEnv = ::getenv("DISPLAY"); //no extended error reporting
+    if (!displEnv || ::strlen(displEnv) == 0)
+    if (::setenv("DISPLAY", ":0", true /*overwrite*/) != 0)
+        logExtraError(_("Error during process initialization.") + L"\n\n" + formatSystemError("setenv(DISPLAY, :0)", getLastError()));
+
 #ifdef __WXGTK3__
-    GLOBAL_RUN_ONCE(::gdk_set_allowed_backends("x11,*")); //call *before* gtk_init()
+    ::gdk_set_allowed_backends("x11,*"); //call *before* gtk_init()
+
+    //workaround for lost mouse scrolling events when moving at the same time: https://bugs.kde.org/show_bug.cgi?id=348270
+    if (::setenv("GDK_CORE_DEVICE_EVENTS", "1", true /*overwrite*/) != 0)
+    logExtraError(_("Error during process initialization.") + L"\n\n" + formatSystemError("setenv(GDK_CORE_DEVICE_EVENTS, 1)", getLastError()));
 #endif
+    );
+
 
 IMPLEMENT_APP(Application)
 

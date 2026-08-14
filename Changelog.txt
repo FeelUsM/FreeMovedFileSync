@@ -1,3 +1,13 @@
+FreeFileSync 14.11 [2026-08-10]
+------------------------------
+Fixed "TLS session resumption required" FTP error
+Log file time errors as "info" after comparing by file content
+Fixed tooltip not being updated during mouse scrolling (macOS, Linux)
+Fixed sluggy mouse scrolling during mouse movement (Linux)
+Skip ADS when failing to copy to ReFS (Windows)
+Updated translation files
+
+
 FreeFileSync 14.10 [2026-06-28]
 ------------------------------
 Added CRC32 verification for application resource files

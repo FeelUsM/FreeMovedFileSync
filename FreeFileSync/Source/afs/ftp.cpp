@@ -97,7 +97,7 @@ bool operator==(const FtpSessionCfg& lhs, const FtpSessionCfg& rhs)
 Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& itemPath); //noexcept
 
 
-Zstring ansiToUtfEncoding(const std::string_view& str) //throw SysError
+Zstring ansiToUtfEncoding(std::string_view str) //throw SysError
 {
     if (str.empty()) return {};
 
@@ -539,7 +539,7 @@ public:
 
             if (const std::vector<std::string_view>& headerLines = splitFtpResponse(headerData);
                 !headerLines.empty())
-                if (const std::string_view& response = trimCpy(headerLines.back()); //that *should* be the server's error response
+                if (const std::string_view response = trimCpy(headerLines.back()); //that *should* be the server's error response
                     !response.empty())
                     errorMsg += (errorMsg.empty() ? L"" : L"\n") + utfTo<std::wstring>(response);
 #if 0
@@ -595,7 +595,7 @@ public:
         //=> '*' to the rescue: as long as we get an FTP response - *any* FTP response (including 550) - the connection itself is fine!
         const std::string& featBuf = runSingleFtpCommand("*FEAT", false /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
 
-        for (const std::string_view& line : splitFtpResponse(featBuf))
+        for (const std::string_view line : splitFtpResponse(featBuf))
             if (startsWith(line, "211 ") ||
                 startsWith(line, "500 ") ||
                 startsWith(line, "550 "))
@@ -628,7 +628,7 @@ public:
 
             const std::string& pwdBuf = runSingleFtpCommand("PWD", true /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
 
-            for (const std::string_view& line : splitFtpResponse(pwdBuf))
+            for (const std::string_view line : splitFtpResponse(pwdBuf))
                 if (startsWith(line, "257 "))
                 {
                     /* 257<space>[rubbish]"<directory-name>"<space><commentary>        according to libcurl
@@ -703,7 +703,7 @@ public:
         return utfToServerEncoding(serverPath); //throw SysError
     }
 
-    Zstring serverToUtfEncoding(const std::string_view& str) //throw SysError
+    Zstring serverToUtfEncoding(std::string_view str) //throw SysError
     {
         if (isAsciiString(str)) //fast path
             return {str.begin(), str.end()};
@@ -826,7 +826,7 @@ private:
 
         //get *last* FTP status code (can there be more than one!?)
         int ftpStatusCode = 0;
-        for (const std::string_view& line : splitFtpResponse(optsBuf))
+        for (const std::string_view line : splitFtpResponse(optsBuf))
             if (line.size() >= 4 &&
                 isDigit(line[0]) &&
                 isDigit(line[1]) &&
@@ -905,7 +905,7 @@ private:
         Features output; //FEAT command: https://tools.ietf.org/html/rfc2389#page-4
         std::vector<std::string_view> lines = splitFtpResponse(featResponse);
 
-        auto it = std::find_if(lines.begin(), lines.end(), [](const std::string_view& line) { return startsWith(line, "211-") || startsWith(line, "211 "); });
+        auto it = std::find_if(lines.begin(), lines.end(), [](std::string_view line) { return startsWith(line, "211-") || startsWith(line, "211 "); });
         if (it != lines.end())
         {
             ++it;
@@ -1192,7 +1192,7 @@ FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //thro
             const std::string sizeBuf = session.runSingleFtpCommand("*SIZE " + session.getServerPathInternal(linkPath),
                                                                     true /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
             //alternative: use libcurl + CURLINFO_CONTENT_LENGTH_DOWNLOAD_T? => nah, surprise (motherfucker)! libcurl adds needless "REST 0" command!
-            for (const std::string_view& line : splitFtpResponse(sizeBuf))
+            for (const std::string_view line : splitFtpResponse(sizeBuf))
                 if (startsWith(line, "213 ")) // 213<space>[rubbish]<file size>        according to libcurl
                 {
                     if (isDigit(line.back())) //https://tools.ietf.org/html/rfc3659#section-4
@@ -1219,7 +1219,7 @@ FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //thro
 
         output.modTime = [&] //https://tools.ietf.org/html/rfc3659#section-3
         {
-            for (const std::string_view& line : splitFtpResponse(mdtmBuf))
+            for (const std::string_view line : splitFtpResponse(mdtmBuf))
                 if (startsWith(line, "213 ")) // 213<space> YYYYMMDDHHMMSS[.sss]       "Time values are always represented in UTC (GMT)" ...and libcurl thinks so, too
                 {
                     const auto itStart = line.begin() + 4;
@@ -1310,7 +1310,7 @@ private:
     static std::vector<FtpItem> parseMlsd(const std::string& buf, FtpSession& session) //throw SysError
     {
         std::vector<FtpItem> output;
-        for (const std::string_view& line : splitFtpResponse(buf))
+        for (const std::string_view line : splitFtpResponse(buf))
         {
             FtpItem item = parseMlstLine(line, session); //throw SysError
             if (item.itemName != Zstr(".") &&
@@ -1320,7 +1320,7 @@ private:
         return output;
     }
 
-    static FtpItem parseMlstLine(const std::string_view& rawLine, FtpSession& session) //throw SysError
+    static FtpItem parseMlstLine(std::string_view rawLine, FtpSession& session) //throw SysError
     {
         /*  https://tools.ietf.org/html/rfc3659
             type=cdir;sizd=4096;modify=20170116230740;UNIX.mode=0755;UNIX.uid=874;UNIX.gid=869;unique=902g36e1c55; .
@@ -1488,7 +1488,7 @@ private:
         return output;
     }
 
-    static FtpItem parseUnixLine(const std::string_view& rawLine, time_t utcTimeNow, int utcCurrentYear, int ownerGroupCount, FtpSession& session) //throw SysError
+    static FtpItem parseUnixLine(std::string_view rawLine, time_t utcTimeNow, int utcCurrentYear, int ownerGroupCount, FtpSession& session) //throw SysError
     {
         /* Unix standard listing: "ls -l --all"
 
@@ -1673,7 +1673,7 @@ private:
         const int utcCurrentYear = tc.year;
 
         std::vector<FtpItem> output;
-        for (const std::string_view& line : splitFtpResponse(buf))
+        for (const std::string_view line : splitFtpResponse(buf))
         {
             try
             {

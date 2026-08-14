@@ -150,7 +150,7 @@ std::string generateLogFooterTxt(const std::wstring& logFilePath /*optional*/, i
 }
 
 
-std::string htmlTxt(const std::string_view& str)
+std::string htmlTxt(std::string_view str)
 {
     std::string msg = htmlSpecialChars(str);
     trim(msg);

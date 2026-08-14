@@ -1804,7 +1804,10 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                                           false, file.isFollowedSymlink<sideSrc>());
 
                 if (result.errorModTime) //log only; no popup
-                    acb_.logMessage(result.errorModTime->toString(), PhaseCallback::MsgType::warning); //throw ThreadStopRequest
+                    acb_.logMessage(result.errorModTime->toString(),
+                                    file.base().getCompVariant() == CompareVariant::timeSize ?
+                                    PhaseCallback::MsgType::warning :
+                                    PhaseCallback::MsgType::info /*e.g. FTP server not supporting MFMT command*/); //throw ThreadStopRequest
             }
             catch (const FileError& e)
             {
@@ -1936,7 +1939,10 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                                       file.isFollowedSymlink<sideSrc>());
 
             if (result.errorModTime) //log only; no popup
-                acb_.logMessage(result.errorModTime->toString(), PhaseCallback::MsgType::warning); //throw ThreadStopRequest
+                acb_.logMessage(result.errorModTime->toString(),                     
+                    file.base().getCompVariant() == CompareVariant::timeSize ?
+                                    PhaseCallback::MsgType::warning :
+                                    PhaseCallback::MsgType::info /*e.g. FTP server not supporting MFMT command*/); //throw ThreadStopRequest
         }
         break;
 

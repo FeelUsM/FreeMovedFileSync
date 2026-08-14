@@ -16,10 +16,10 @@ namespace zen
 // compression level must be between 0 and 9:
 // 0: no compression
 // 9: best compression
-std::string compress(const std::string_view& stream, int level); //throw SysError
+std::string compress(std::string_view stream, int level); //throw SysError
 //caveat: output stream is physically larger than input! => strip additional reserved space if needed: "BinContainer(output.begin(), output.end())"
 
-std::string decompress(const std::string_view& stream); //throw SysError
+std::string decompress(std::string_view stream); //throw SysError
 
 
 class InputStreamAsGzip //convert input stream into gzip on the fly
@@ -38,7 +38,7 @@ private:
     const std::unique_ptr<Impl> pimpl_;
 };
 
-std::string compressAsGzip(const std::string_view& stream); //throw SysError
+std::string compressAsGzip(std::string_view stream); //throw SysError
 }
 
 #endif //ZLIB_WRAP_H_428597064566

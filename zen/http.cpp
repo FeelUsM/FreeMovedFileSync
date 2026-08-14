@@ -101,7 +101,7 @@ public:
                 //and only then allow AsyncStreamBuffer::write() which can block!
 
                 std::string headerBuf;
-                auto onHeaderData = [&](const std::string_view& headerLine)
+                auto onHeaderData = [&](std::string_view headerLine)
                 {
                     if (headerReceived)
                         throw SysError(L"Unexpected header data after end of HTTP header.");
@@ -162,8 +162,8 @@ public:
 
         const std::string headBuf = futHeader.get(); //throw SysError
         //parse header: https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request-Line
-        const std::string_view& statusBuf  = beforeFirst<std::string_view>(headBuf, "\r\n", IfNotFoundReturn::all);
-        const std::string_view& headersBuf = afterFirst <std::string_view>(headBuf, "\r\n", IfNotFoundReturn::none);
+        const std::string_view statusBuf  = beforeFirst<std::string_view>(headBuf, "\r\n", IfNotFoundReturn::all);
+        const std::string_view headersBuf = afterFirst <std::string_view>(headBuf, "\r\n", IfNotFoundReturn::none);
 
         const std::vector<std::string_view> statusItems = splitCpy(statusBuf, ' ', SplitOnEmpty::allow); //HTTP-Version SP Status-Code SP Reason-Phrase CRLF
         if (statusItems.size() < 2 || !startsWith(statusItems[0], "HTTP/"))
@@ -285,7 +285,7 @@ std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
 
 
 //encode for "application/x-www-form-urlencoded"
-std::string urlencode(const std::string_view& str)
+std::string urlencode(std::string_view str)
 {
     std::string output;
     for (const char c : str) //follow PHP spec: https://github.com/php/php-src/blob/e99d5d39239c611e1e7304e79e88545c4e71a073/ext/standard/url.c#L455
@@ -307,7 +307,7 @@ std::string urlencode(const std::string_view& str)
 }
 
 
-std::string urldecode(const std::string_view& str)
+std::string urldecode(std::string_view str)
 {
     std::string output;
     for (size_t i = 0; i < str.size(); ++i)
@@ -342,7 +342,7 @@ std::string zen::xWwwFormUrlEncode(const std::vector<std::pair<std::string, std:
 }
 
 
-std::vector<std::pair<std::string, std::string>> zen::xWwwFormUrlDecode(const std::string_view str)
+std::vector<std::pair<std::string, std::string>> zen::xWwwFormUrlDecode(std::string_view str)
 {
     std::vector<std::pair<std::string, std::string>> output;
 
@@ -481,7 +481,7 @@ std::wstring zen::formatHttpError(int sc)
 }
 
 
-bool zen::isValidEmail(const std::string_view& email)
+bool zen::isValidEmail(std::string_view email)
 {
     //https://en.wikipedia.org/wiki/Email_address#Syntax
     //https://tools.ietf.org/html/rfc3696 => note errata! https://www.rfc-editor.org/errata_search.php?rfc=3696
@@ -501,8 +501,8 @@ bool zen::isValidEmail(const std::string_view& email)
     stripComments(local);
     stripComments(domain);
 
-    if (local .empty() || local .size() > 63 || // 64 octets ->  63 ASCII chars: https://devblogs.microsoft.com/oldnewthing/20120412-00/?p=7873
-        domain.empty() || domain.size() > 253)  //255 octets -> 253 ASCII chars
+    if (local .empty() || local .size() > 64 || //RFC 5321: maximum total length of a user name (local part) is 64 octets
+        domain.empty() || domain.size() > 253)  //255 octets -> 253 ASCII chars: https://devblogs.microsoft.com/oldnewthing/20120412-00/?p=7873
         return false;
     //---------------------------------------------------------------------
 
@@ -510,7 +510,7 @@ bool zen::isValidEmail(const std::string_view& email)
     const bool quoted = (startsWith(local, '"') && endsWith(local, '"')) ||
                         contains(local, '\\'); //e.g. "t\@st@email.com"
     if (!quoted)
-        for (const std::string_view& comp : splitCpy(local, '.', SplitOnEmpty::allow))
+        for (const std::string_view comp : splitCpy(local, '.', SplitOnEmpty::allow))
             if (comp.empty() || !std::all_of(comp.begin(), comp.end(), [](const char c)
         {
             constexpr std::string_view printable("!#$%&'*+-/=?^_`{|}~");
@@ -527,8 +527,8 @@ bool zen::isValidEmail(const std::string_view& email)
         if (!contains(domain, '.'))
             return false;
 
-        for (const std::string_view& comp : splitCpy(domain, '.', SplitOnEmpty::allow))
-            if (comp.empty() || comp.size() > 63 ||
+        for (const std::string_view comp : splitCpy(domain, '.', SplitOnEmpty::allow))
+            if (comp.empty() || comp.size() > 63 || //63 ASCII chars max: https://devblogs.microsoft.com/oldnewthing/20120412-00/?p=7873
             !std::all_of(comp.begin(), comp.end(), [](const char c) { return isAsciiAlpha(c) ||isDigit(c) || !isAsciiChar(c) || c ==  '-'; }))
         return false;
     }
@@ -537,7 +537,7 @@ bool zen::isValidEmail(const std::string_view& email)
 }
 
 
-std::string zen::htmlSpecialChars(const std::string_view& str)
+std::string zen::htmlSpecialChars(std::string_view str)
 {
     //mirror PHP: https://github.com/php/php-src/blob/e99d5d39239c611e1e7304e79e88545c4e71a073/ext/standard/html_tables.h#L6189
     std::string output;

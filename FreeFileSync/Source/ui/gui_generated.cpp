@@ -2129,7 +2129,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     ffgSizer111->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 
     wxStaticText* m_staticText12011;
-    m_staticText12011 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Create:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText12011 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Created:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText12011->Wrap( -1 );
     ffgSizer111->Add( m_staticText12011, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT, 5 );
 
@@ -2140,7 +2140,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     ffgSizer111->Add( m_bpButtonRightCreate, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
 
     wxStaticText* m_staticText12012;
-    m_staticText12012 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Update:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText12012 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Updated:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText12012->Wrap( -1 );
     ffgSizer111->Add( m_staticText12012, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
 
@@ -2151,7 +2151,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     ffgSizer111->Add( m_bpButtonRightUpdate, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
 
     wxStaticText* m_staticText12013;
-    m_staticText12013 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Delete:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText12013 = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Deleted:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText12013->Wrap( -1 );
     ffgSizer111->Add( m_staticText12013, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT, 5 );
 
@@ -6174,7 +6174,7 @@ WarnAccessRightsMissingDlgGenerated::WarnAccessRightsMissingDlgGenerated( wxWind
     m_staticTextStep2->Wrap( -1 );
     ffgSizer11->Add( m_staticTextStep2, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
 
-    m_buttonOpenSecurity = new wxButton( m_panel39, wxID_ANY, _("Open Security && Privacy"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_buttonOpenSecurity = new wxButton( m_panel39, wxID_ANY, _("Open Privacy && Security"), wxDefaultPosition, wxDefaultSize, 0 );
     ffgSizer11->Add( m_buttonOpenSecurity, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
 
     m_staticTextStep3 = new wxStaticText( m_panel39, wxID_ANY, _("3."), wxDefaultPosition, wxDefaultSize, 0 );

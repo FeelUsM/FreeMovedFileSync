@@ -13,12 +13,12 @@
 #include <zen/basic_math.h>
 #include <zen/string_tools.h>
 #include <zen/scope_guard.h>
+#include <zen/sys_error.h>
 #include <zen/utf.h>
 #include <zen/zstring.h>
 #include <zen/format_unit.h>
 #include "color_tools.h"
 #include "dc.h"
-
     #include <gtk/gtk.h>
 
 using namespace zen;
@@ -374,11 +374,7 @@ private:
             There should be no internal forwarding of the message, since DefWindowProc propagates
             it up the parent chain until it finds a window that processes it."
 
-            On macOS there is no such propagation! => we need a redirection (the same wxGrid implements)
-
-            new wxWidgets 3.0 screw-up for GTK2: wxScrollHelperEvtHandler::ProcessEvent() ignores wxEVT_MOUSEWHEEL events
-            thereby breaking the scenario of redirection to parent we need here (but also breaking their very own wxGrid sample)
-            => call wxScrolledWindow mouse wheel handler directly                          */
+            On macOS there is no such propagation! => we need a redirection (the same wxGrid implements)    */
 
         //wxWidgets never ceases to amaze: multi-line scrolling is implemented maximally inefficient by repeating wxEVT_SCROLLWIN_LINEUP!! => WTF!
         if (event.GetWheelAxis() == wxMOUSE_WHEEL_VERTICAL && //=> reimplement wxScrollHelperBase::HandleOnMouseWheel() in a non-retarded way
@@ -398,11 +394,11 @@ private:
             parent_.scrollDelta(0, rowsDelta);
         }
         else
-            parent_.HandleOnMouseWheel(event);
+            event.Skip();
 
-        onMouseMovement(event);
-        event.Skip(false);
-
+    wxMouseEvent motionEvent(wxEVT_MOTION); 
+    motionEvent.SetPosition(event.GetPosition());
+    GetEventHandler()->ProcessEvent(motionEvent); //update mouse hover and tooltip!
         //if (!sendEventToParent(event))
         //   event.Skip();
     }
