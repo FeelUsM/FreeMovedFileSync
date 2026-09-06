@@ -183,7 +183,7 @@ std::string getUnknownVersionTag()
 
 bool fff::haveNewerVersionOnline(const std::string& onlineVersion)
 {
-    auto parseVersion = [](const std::string_view& version)
+    auto parseVersion = [](std::string_view version)
     {
         std::vector<size_t> output;
         split(version, FFS_VERSION_SEPARATOR,

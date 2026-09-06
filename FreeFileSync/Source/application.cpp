@@ -33,6 +33,20 @@ using namespace zen;
 using namespace fff;
 
 
+GLOBAL_RUN_ONCE(
+    /*  GTK requires the DISPLAY variable: "11:21:06: Error: Unable to initialize GTK+, is DISPLAY set properly?"
+        https://askubuntu.com/questions/432255/what-is-the-display-environment-variable
+
+        => might be missing when running FreeFileSync via cron as root
+        => sometimes it's DISPLAY=:1 or DISPLAY=:0.0 https://freefilesync.org/forum/viewtopic.php?t=9178
+        => alternative: --display=:0.0 (for gtk init: overrides the DISPLAY  environment variable)          */
+    const char* displEnv = ::getenv("DISPLAY"); //no extended error reporting
+    if (!displEnv || ::strlen(displEnv) == 0)
+    if (::setenv("DISPLAY", ":0", true /*overwrite*/) != 0)
+        logExtraError(_("Error during process initialization.") + L"\n\n" + formatSystemError("setenv(DISPLAY, :0)", getLastError()));
+        /* CAREFUL: "Modifications of environment variables are not allowed in multi-threaded programs" - https://rachelbythebay.com/w/2017/01/30/env/
+        => luckily we're not multi-threaded (yet)! */
+
 #ifdef __WXGTK3__
     /* Wayland backend used by GTK3 does not allow to move windows!
 
@@ -42,8 +56,14 @@ using namespace fff;
     Show all available GTK backends: run FreeFileSync with env variable:    GDK_BACKEND=help
 
     => workaround: https://docs.gtk.org/gdk3/func.set_allowed_backends.html           */
-    GLOBAL_RUN_ONCE(::gdk_set_allowed_backends("x11,*")); //call *before* gtk_init()
+    ::gdk_set_allowed_backends("x11,*"); //call *before* gtk_init()
+
+    //workaround for lost mouse scrolling events when moving at the same time: https://bugs.kde.org/show_bug.cgi?id=348270
+    if (::setenv("GDK_CORE_DEVICE_EVENTS", "1", true /*overwrite*/) != 0)
+    logExtraError(_("Error during process initialization.") + L"\n\n" + formatSystemError("setenv(GDK_CORE_DEVICE_EVENTS, 1)", getLastError()));
 #endif
+    );
+
 
 IMPLEMENT_APP(Application)
 

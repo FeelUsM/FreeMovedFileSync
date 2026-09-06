@@ -645,7 +645,7 @@ std::vector<SharedRef<BaseFolderPair>> ComparisonBuffer::compareByContent(const 
         //---------------------------------------------------------------
         const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(compareTime.elapsed()).count();
 
-        cb_.logMessage(_("File contents compared:") + L' '  + formatNumber(itemsProcessed) + L" (" + formatFilesizeShort(bytesProcessed) + L") | " +
+        cb_.logMessage(_("Total data compared:") + L' '  + formatNumber(itemsProcessed) + L" (" + formatFilesizeShort(bytesProcessed) + L") | " +
                        _("Time elapsed:") + L' ' + utfTo<std::wstring>(formatTimeSpan(totalTimeSec)),
                        PhaseCallback::MsgType::info); //throw X
     }

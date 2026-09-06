@@ -82,7 +82,7 @@ size_t zlib_decompress(const void* src, size_t srcLen, void* trg, size_t trgLen)
 
 #undef compress //mitigate zlib macro shit...
 
-std::string zen::compress(const std::string_view& stream, int level) //throw SysError
+std::string zen::compress(std::string_view stream, int level) //throw SysError
 {
     std::string output;
     if (!stream.empty()) //don't dereference iterator into empty container!
@@ -109,7 +109,7 @@ std::string zen::compress(const std::string_view& stream, int level) //throw Sys
 }
 
 
-std::string zen::decompress(const std::string_view& stream) //throw SysError
+std::string zen::decompress(std::string_view stream) //throw SysError
 {
     std::string output;
     if (!stream.empty()) //don't dereference iterator into empty container!
@@ -226,7 +226,7 @@ size_t InputStreamAsGzip::getBlockSize() const { return pimpl_->getBlockSize(); 
 size_t InputStreamAsGzip::read(void* buffer, size_t bytesToRead) { return pimpl_->read(buffer, bytesToRead); } //throw SysError, X
 
 
-std::string zen::compressAsGzip(const std::string_view& stream) //throw SysError
+std::string zen::compressAsGzip(std::string_view stream) //throw SysError
 {
     MemoryStreamIn memStream(stream);
 

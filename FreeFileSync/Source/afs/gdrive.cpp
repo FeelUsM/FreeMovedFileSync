@@ -327,7 +327,7 @@ HttpSession::Result googleHttpsRequest(const Zstring& serverName, const std::str
                                        std::vector<CurlOption> extraOptions,
                                        const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/, //optional
                                        const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional; return "bytesToRead" bytes unless end of stream!
-                                       const std::function<void(const std::string_view& header)>& receiveHeader /*throw X*/, //optional
+                                       const std::function<void  (std::string_view   header)>& receiveHeader /*throw X*/, //optional
                                        int timeoutSec)
 {
     //https://developers.google.com/drive/api/v3/performance
@@ -354,7 +354,7 @@ HttpSession::Result gdriveHttpsRequest(const std::string& serverRelPath, //throw
                                        const std::vector<CurlOption>& extraOptions,
                                        const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/, //optional
                                        const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional; return "bytesToRead" bytes unless end of stream!
-                                       const std::function<void(const std::string_view& header)>& receiveHeader /*throw X*/, //optional
+                                       const std::function<void  (std::string_view   header)>& receiveHeader /*throw X*/, //optional
                                        const GdriveAccess& access)
 {
     extraHeaders.push_back("Authorization: Bearer " + access.token);
@@ -1733,7 +1733,7 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
 
         std::string uploadUrl;
 
-        auto onHeaderData = [&](const std::string_view& header)
+        auto onHeaderData = [&](std::string_view header)
         {
             //"The callback will be called once for each header and only complete header lines are passed on to the callback" (including \r\n at the end)
             if (startsWithAsciiNoCase(header, "Location:"))

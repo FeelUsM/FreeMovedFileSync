@@ -68,7 +68,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
                                          const std::vector<std::string>& extraHeaders, const std::vector<CurlOption>& extraOptions,
                                          const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/, //optional
                                          const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional; return "bytesToRead" bytes unless end of stream!
-                                         const std::function<void(const std::string_view& header)>& receiveHeader /*throw X*/,
+                                         const std::function<void(std::string_view header)>& receiveHeader /*throw X*/,
                                          int timeoutSec) //throw SysError, X
 {
     if (!easyHandle_)

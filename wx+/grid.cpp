@@ -13,12 +13,12 @@
 #include <zen/basic_math.h>
 #include <zen/string_tools.h>
 #include <zen/scope_guard.h>
+#include <zen/sys_error.h>
 #include <zen/utf.h>
 #include <zen/zstring.h>
 #include <zen/format_unit.h>
 #include "color_tools.h"
 #include "dc.h"
-
     #include <gtk/gtk.h>
 
 using namespace zen;
@@ -43,8 +43,8 @@ using namespace zen;
     CAVEAT: MSWDisableComposited() leads to severe flickering for other child windows (e.g. wxStaticBitmap, wxBitmapButton)
         that lack custom double-buffering. It's even worse since wxWidgets in its wisdom sets WS_EX_COMPOSITED
         together with CS_HREDRAW/CS_VREDRAW, https://github.com/vadz/wxWidgets/blob/8de0694a5e9c9d7c24e0af2ccf71454df5e6b9d0/src/msw/window.cpp#L507
-        and MSWDisableComposited() only removes former attribute.      
-        
+        and MSWDisableComposited() only removes former attribute.
+
     ============================================================================================
     ||  !!!UPDATE!!! wxWidgets 3.3.2 undoes the MADNESS, no more WS_EX_COMPOSITED by default: ||
     ||  https://github.com/wxWidgets/wxWidgets/pull/25808                                     ||
@@ -374,11 +374,7 @@ private:
             There should be no internal forwarding of the message, since DefWindowProc propagates
             it up the parent chain until it finds a window that processes it."
 
-            On macOS there is no such propagation! => we need a redirection (the same wxGrid implements)
-
-            new wxWidgets 3.0 screw-up for GTK2: wxScrollHelperEvtHandler::ProcessEvent() ignores wxEVT_MOUSEWHEEL events
-            thereby breaking the scenario of redirection to parent we need here (but also breaking their very own wxGrid sample)
-            => call wxScrolledWindow mouse wheel handler directly                          */
+            On macOS there is no such propagation! => we need a redirection (the same wxGrid implements)    */
 
         //wxWidgets never ceases to amaze: multi-line scrolling is implemented maximally inefficient by repeating wxEVT_SCROLLWIN_LINEUP!! => WTF!
         if (event.GetWheelAxis() == wxMOUSE_WHEEL_VERTICAL && //=> reimplement wxScrollHelperBase::HandleOnMouseWheel() in a non-retarded way
@@ -398,11 +394,11 @@ private:
             parent_.scrollDelta(0, rowsDelta);
         }
         else
-            parent_.HandleOnMouseWheel(event);
+            event.Skip();
 
-        onMouseMovement(event);
-        event.Skip(false);
-
+    wxMouseEvent motionEvent(wxEVT_MOTION); 
+    motionEvent.SetPosition(event.GetPosition());
+    GetEventHandler()->ProcessEvent(motionEvent); //update mouse hover and tooltip!
         //if (!sendEventToParent(event))
         //   event.Skip();
     }

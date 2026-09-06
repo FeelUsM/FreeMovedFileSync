@@ -74,7 +74,7 @@ XmlDoc parseXml(const std::string& stream); //throw XmlParsingError
 namespace xml_impl
 {
 template <class Predicate> inline
-std::string normalize(const std::string_view& str, Predicate pred) //pred: unary function taking a char, return true if value shall be encoded as hex
+std::string normalize(std::string_view str, Predicate pred) //pred: unary function taking a char, return true if value shall be encoded as hex
 {
     std::string output;
     for (const char c : str)
@@ -141,7 +141,7 @@ bool checkEntity(CharIterator& first, CharIterator last, const char (&placeholde
 
 namespace
 {
-std::string denormalize(const std::string_view& str)
+std::string denormalize(std::string_view str)
 {
     std::string output;
     for (auto it = str.begin(); it != str.end(); ++it)
